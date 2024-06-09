@@ -1,14 +1,14 @@
 import numpy as np
 from TDPR import *
 # Load the data
-val_error_index=np.load("data/demo/val_error_index.npy")
-test_error_index=np.load("data/demo/test_error_index.npy")
-val_pros=np.load("data/demo/val_pros.npy")
-val_labels=np.load("data/demo/val_labels.npy")
-val_infos=np.load("data/demo/val_infos.npy")
-test_pros=np.load("data/demo/test_pros.npy")
-test_labels=np.load("data/demo/test_labels.npy")
-test_infos=np.load("data/demo/test_infos.npy")
+val_error_index=np.load("demo/val_error_index.npy")
+test_error_index=np.load("demo/test_error_index.npy")
+val_pros=np.load("demo/val_pros.npy")
+val_labels=np.load("demo/val_labels.npy")
+val_infos=np.load("demo/val_infos.npy")
+test_pros=np.load("demo/test_pros.npy")
+test_labels=np.load("demo/test_labels.npy")
+test_infos=np.load("demo/test_infos.npy")
 val_features = extract_features(val_pros, val_labels, val_infos)
 test_features = extract_features(test_pros, test_labels, test_infos)
 val_train_label = np.zeros(len(val_features), dtype=int)
