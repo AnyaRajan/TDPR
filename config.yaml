@@ -1,0 +1,17 @@
+epochs: 100
+save_per_n_epochs: 1 # save checkpoint per n epochs
+model: resnet18 # model architecture
+dataset: cifar10 # dataset name
+start: 10
+optimizer:
+  weight_decay: 5e-4
+  momentum: 0.9
+  lr: 0.1
+seed: 42 # random seed
+scheduler: # scheduler for learning rate
+  T_max: 100
+resume: False # resume from checkpoint
+degree: 15
+num: 200
+budget: 1000
+corruption: "brightness"
