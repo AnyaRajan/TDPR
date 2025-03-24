@@ -83,11 +83,21 @@ def get_num_of_most_diff_class(labels):
     return max_diff
 
 def extract_features(pros, labels, infos):
-    avg_p_diff = calculate_avg_pro_diff(pros)
-    avg_info = np.mean(infos, axis=1)
-    std_info = np.std(infos, axis=1)
-    std_label = np.std(labels, axis=1)
-    max_diff_num = get_num_of_most_diff_class(labels)
+    # Compute feature vectors for each sample.
+    avg_p_diff = calculate_avg_pro_diff(pros)      # Expect shape: (num_samples,)
+    avg_info = np.mean(infos, axis=1)               # Expect shape: (num_samples,)
+    std_info = np.std(infos, axis=1)                # Expect shape: (num_samples,)
+    std_label = np.std(labels, axis=1)              # Expect shape: (num_samples,)
+    max_diff_num = get_num_of_most_diff_class(labels)  # Expect shape: (num_samples,)
+    
+    # Debug prints: check shapes of each feature array
+    print("Shape of std_label:", std_label.shape)
+    print("Shape of avg_info:", avg_info.shape)
+    print("Shape of std_info:", std_info.shape)
+    print("Shape of max_diff_num:", max_diff_num.shape)
+    print("Shape of avg_p_diff:", avg_p_diff.shape)
+    
+    # Stack features: each column is one feature
     feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff))
     scaler = MinMaxScaler()
     return scaler.fit_transform(feature)
