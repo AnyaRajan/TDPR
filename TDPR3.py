@@ -103,23 +103,49 @@ def calculate_info_entropy(pros):
 def test(net, testloader):
     net.eval()
     correct, total = 0, 0
-    pros, labels, infos, error_index = [], [], [], []
+    all_probs, all_labels, all_infos = [], [], []
+    error_indices = []
+    
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
-            pro = F.softmax(outputs, dim=1).cpu().numpy()
-            pros.extend(pro)
-            infos.extend(calculate_info_entropy(pro))
+            probs = F.softmax(outputs, dim=1).cpu().numpy()
+            batch_size = inputs.size(0)
+            
+            all_probs.extend(probs)
+            # Calculate information entropy for each sample in the batch
+            batch_infos = calculate_info_entropy(probs)
+            all_infos.extend(batch_infos)
+            
             _, predicted = outputs.max(1)
-            labels.extend(predicted.cpu().numpy())
+            all_labels.extend(predicted.cpu().numpy())
+            
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
+            
+            # Compute incorrect mask and absolute indices for this batch
             incorrect_mask = ~predicted.eq(targets)
             if incorrect_mask.any():
-                incorrect_indices = (batch_idx * testloader.batch_size) + torch.nonzero(incorrect_mask).view(-1)
-                error_index.extend(incorrect_indices.tolist())
+                # Get the indices (relative to this batch) where predictions are incorrect.
+                indices = torch.nonzero(incorrect_mask, as_tuple=False).view(-1).cpu().numpy()
+                # Convert these to absolute indices within the dataset.
+                absolute_indices = indices + batch_idx * batch_size
+                error_indices.extend(absolute_indices.tolist())
+    
     acc = 100. * correct / total
+    return np.array(all_probs), np.array(all_labels), np.array(all_infos), np.array(error_indices)
+
+# ... later in your main function when computing RAUC:
+
+# Assume test_num is the number of samples in the test set
+test_num = len(testloader.dataset)
+# Run test() on the testloader to get test_error_index specific to test data
+_, _, _, test_error_index = test(net, testloader)
+
+is_bug = np.zeros(test_num)
+is_bug[test_error_index] = 1
+
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
 # --- Training Function (without snapshot saving) ---
@@ -160,10 +186,15 @@ def main():
 
     valloader, testloader = get_val_and_test(conf.corruption)
 
-    print("⚡ Generating Augmented Outputs...")
+    print("⚡ Generating Augmented Outputs for Validation...")
     val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=50)
     
-    # Debug: Print a few sample probabilities
+    # Instead of calling check_probability_variability again, use the generated outputs:
+    first_sample_probs = val_prob_arrays[0]
+    variance = np.var(first_sample_probs, axis=0)
+    print("🔍 Probability Variance per Class (for first validation sample):", variance)
+    print("🔍 Overall Variance (mean):", np.mean(variance))
+    
     print("📊 Sample Augmented Probabilities (First 5):", val_prob_arrays[:5, -1, :])
     print("📊 Sample Uncertainty (First 5):", val_uncertainty_arrays[:5])
 
@@ -191,6 +222,7 @@ def main():
     print("🎯 Sample Scores (First 10):", scores[:10])
 
     test_num = len(testloader.dataset)
+    _, _, _, test_error_index = test(net, testloader)
     is_bug = np.zeros(test_num)
     is_bug[test_error_index] = 1
     index = np.argsort(scores)[::-1]
@@ -203,3 +235,6 @@ def main():
     print("RAUC@1000:", rauc(is_bug, 1000))
     print("RAUC@all:", rauc(is_bug, test_num))
     print("ATRC:", ATRC(is_bug, len(test_error_index)))
+
+if __name__ == '__main__':
+    main()
