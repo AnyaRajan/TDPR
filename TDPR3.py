@@ -56,7 +56,11 @@ def generate_augmented_outputs(net, dataset, num_aug=50):
         all_prob_arrays[idx] = probs
         all_label_arrays[idx] = labels
         all_uncertainty_arrays[idx] = uncertainties
+    
+    print("Augmented outputs shape:", 
+          all_prob_arrays.shape, all_label_arrays.shape, all_uncertainty_arrays.shape)
     return all_prob_arrays, all_label_arrays, all_uncertainty_arrays
+
 
 # --- Helper Functions for Feature Extraction ---
 def calculate_avg_pro_diff(pros):
@@ -88,9 +92,18 @@ def extract_features(pros, labels, infos):
     std_info = np.std(infos, axis=1)
     std_label = np.std(labels, axis=1)
     max_diff_num = get_num_of_most_diff_class(labels)
+    
+    # Debug: print shapes of all feature arrays
+    print("Shape of std_label:", std_label.shape)
+    print("Shape of avg_info:", avg_info.shape)
+    print("Shape of std_info:", std_info.shape)
+    print("Shape of max_diff_num:", max_diff_num.shape)
+    print("Shape of avg_p_diff:", avg_p_diff.shape)
+    
     feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff))
     scaler = MinMaxScaler()
     return scaler.fit_transform(feature)
+
 
 def calculate_info_entropy(pros):
     entropys = []
