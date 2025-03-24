@@ -25,8 +25,18 @@ def main():
 
     train_data = DMatrix(val_features, label=val_labels)
     xgb_rank_params = {'objective': 'rank:pairwise', 'max_depth': 5, 'learning_rate': 0.05}
-    rankModel = xgboost.train(xgb_rank_params, train_data)
     
+        # Train XGBoost
+    print("Training XGBoost ranking model...")
+    train_data = DMatrix(val_features, label=val_labels)
+    rankModel = xgboost.train(xgb_rank_params, train_data)
+
+    # Predict scores
+    print("Predicting scores on test data...")
+    test_data = DMatrix(test_features)
+    scores = rankModel.predict(test_data)
+    print(f"Sample Scores (First 10): {scores[:10]}")  # Debugging Print
+
     print("Model training complete.")
 
 if __name__ == '__main__':
