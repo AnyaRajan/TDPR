@@ -24,7 +24,7 @@ from PIL import Image
 def calculate_info_entropy_from_probs(probs):
     return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
 
-def forward_with_augmentations(net, sample, num_aug=50):
+def forward_with_augmentations(net, sample, num_aug=10):
     # Convert tensor sample to PIL image if needed
     if isinstance(sample, torch.Tensor):
         sample = transforms.ToPILImage()(sample.cpu())
