@@ -185,7 +185,7 @@ def main():
     test_dataset = testloader.dataset  # Retrieve the underlying dataset
     
     # Generate outputs using 50 augmentations per sample.
-    prob_arrays, label_arrays, uncertainty_arrays = generate_augmented_outputs(net, test_dataset, num_aug=50)
+    prob_arrays, label_arrays, uncertainty_arrays = generate_augmented_outputs(net, test_dataset, num_aug=10)
     
     # Extract features based on the augmented outputs.
     features = extract_features(prob_arrays, label_arrays, uncertainty_arrays)
