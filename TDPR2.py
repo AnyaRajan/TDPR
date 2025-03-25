@@ -169,8 +169,7 @@ def main():
         optimizer = optim.Adam(net.parameters(), lr=0.001)
         
     # Train the model.
-    train(net, conf.epochs, optimizer, criterion, trainloader)
-    
+    train(net, conf.epochs, optimizer, criterion, trainloader, device)
     # Get validation and test DataLoaders.
     valloader, testloader = get_val_and_test(conf.corruption)
     
