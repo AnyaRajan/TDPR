@@ -120,6 +120,7 @@ def test(net, testloader):
                 incorrect_indices = (batch_idx * testloader.batch_size) + torch.nonzero(incorrect_mask).view(-1)
                 error_index.extend(incorrect_indices.tolist())
     acc = 100. * correct / total
+     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
 # --- Training Function (without snapshot saving) ---
@@ -134,7 +135,7 @@ def train(net, num_epochs, optimizer, criterion, trainloader):
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-
+print(f"✅ Training Accuracy for Epoch {epoch + 1}: {epoch_acc:.2f}%")
 # --- Main Function ---
 def main():
     # Initialize model and training data.
