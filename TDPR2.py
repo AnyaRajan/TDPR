@@ -123,19 +123,39 @@ def test(net, testloader):
     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
-# --- Training Function (without snapshot saving) ---
-def train(net, num_epochs, optimizer, criterion, trainloader):
-    net.train()
+import torch
+
+def train(net, num_epochs, optimizer, criterion, trainloader, device):
+    net.to(device)
+    
     for epoch in range(num_epochs):
-        print(f"\nEpoch: {epoch}")
+        net.train()  # Set model to training mode
+        correct = 0
+        total = 0
+        running_loss = 0.0
+        
+        print(f"\nEpoch: {epoch + 1}")
+        
         for batch_idx, (inputs, targets) in enumerate(trainloader):
             inputs, targets = inputs.to(device), targets.to(device)
+            
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-    print(f"✅ Training Accuracy for Epoch {epoch + 1}: {epoch_acc:.2f}%")
+            
+            # Compute training accuracy
+            _, predicted = torch.max(outputs, 1)  # Get predicted class
+            correct += (predicted == targets).sum().item()
+            total += targets.size(0)
+            running_loss += loss.item()
+        
+        epoch_acc = 100 * correct / total
+        avg_loss = running_loss / len(trainloader)
+
+        print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+
 # --- Main Function ---
 def main():
     # Initialize model and training data.
