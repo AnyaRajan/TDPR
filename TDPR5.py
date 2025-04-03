@@ -8,8 +8,6 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision
 from sklearn.preprocessing import MinMaxScaler
-from xgboost import DMatrix
-import xgboost
 from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
 import models
@@ -260,13 +258,23 @@ def main():
 
     # Training loop
     model.train()
-    for epoch in range(20):  # Set number of epochs as needed
+    for epoch in range(20):
+        model.train()
         optimizer.zero_grad()
+        
         outputs = model(X_train.to(device))
         loss = criterion(outputs, y_train.to(device))
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}")
+        
+        # Compute accuracy
+        _, predicted = torch.max(outputs, dim=1)
+        correct = (predicted == y_train.to(device)).sum().item()
+        total = y_train.size(0)
+        accuracy = 100.0 * correct / total
+        
+        print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
+
 
     # Get predicted probabilities for test set
     model.eval()
@@ -274,24 +282,6 @@ def main():
         logits = model(X_test.to(device))
         probs = F.softmax(logits, dim=1)
         scores = probs[:, 1].cpu().numpy()  # Take probability of class '1' (bug)
-
-
-    # # Build and train the ranking model using XGBoost.
-    # xgb_rank_params = {
-    #     'objective': 'rank:pairwise',
-    #     'colsample_bytree': 0.5,
-    #     'nthread': -1,
-    #     'eval_metric': 'ndcg',
-    #     'max_depth': 5,
-    #     'min_child_weight': 1,
-    #     'learning_rate': 0.05,
-    # }
-    # train_data = DMatrix(val_features, label=val_labels)
-    # rankModel = xgboost.train(xgb_rank_params, train_data)
-    
-    # # Predict scores on test features.
-    # test_data = DMatrix(test_features)
-    # scores = rankModel.predict(test_data)
     
     test_num = len(testloader.dataset)
     is_bug = np.zeros(test_num)
