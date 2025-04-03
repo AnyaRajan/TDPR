@@ -1,4 +1,4 @@
-def generate_augmented_outputs(net, dataset, num_aug=50):
+def generate_augmented_outputs(net, dataset, num_aug=100):
     print("Generating augmented outputs...")  # Debugging Print
     num_samples = len(dataset)
     

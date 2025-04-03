@@ -20,7 +20,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def calculate_info_entropy_from_probs(probs):
     return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
 
-def forward_with_augmentations(net, sample, num_aug=50):
+def forward_with_augmentations(net, sample, num_aug=100):
     if isinstance(sample, torch.Tensor):
         sample = transforms.ToPILImage()(sample.cpu())
     aug_pipeline = get_augmentation_pipeline()  # Defined in data_util.py
@@ -36,7 +36,7 @@ def forward_with_augmentations(net, sample, num_aug=50):
             uncertainty_list.append(calculate_info_entropy_from_probs(probs))
     return np.array(prob_list), np.array(label_list), np.array(uncertainty_list)
 
-def generate_augmented_outputs(net, dataset, num_aug=50):
+def generate_augmented_outputs(net, dataset, num_aug=100):
     num_samples = len(dataset)
     first_sample, _ = dataset[0]
     if isinstance(first_sample, torch.Tensor):
@@ -200,8 +200,8 @@ def main():
         test_uncertainty_arrays = data['test_uncertainty_arrays']
         print("Loaded augmented outputs from file.")
     else:
-        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=50)
-        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=50)
+        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=100)
+        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=100)
         np.savez(aug_file,
                  val_prob_arrays=val_prob_arrays,
                  val_label_arrays=val_label_arrays,
