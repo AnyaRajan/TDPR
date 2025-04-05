@@ -161,24 +161,28 @@ def main():
     # Initialize model and training data.
     net = models.__dict__[conf.model]().to(device)
     trainloader = get_train_data(conf.dataset)
-    if conf.dataset in ["cifar10", "imagenet"]:
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(net.parameters(), lr=0.001)
-    else:
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(net.parameters(), lr=0.001)
-        
-    # Train the model.
-    train(net, conf.epochs, optimizer, criterion, trainloader, device)
-    # Get validation and test DataLoaders.
-    valloader, testloader = get_val_and_test(conf.corruption)
     
-    # Set up file paths for saving intermediate arrays.
+    # Set up criterion and optimizer for the base network
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(net.parameters(), lr=0.001)
+    
+    # Train the base network
+    train(net, conf.epochs, optimizer, criterion, trainloader, device)
+    
+    # For evaluation, use the clean dataset
+    # Option: Use get_clean_test_dataset() instead of corrupted data loader
+    testloader = get_clean_test_dataset(conf.dataset)
+    
+    # Get validation loader, for example by splitting test data
+    # (You may want to adapt this to your needs.)
+    valloader, _ = get_val_and_test(conf.corruption)  # Or load clean validation data
+    
+    # Generate augmented outputs and extract features from the validation and test sets
+    # (This part remains unchanged.)
     aug_file = "augmented_outputs.npz"
     feat_file = "extracted_features.npz"
     err_file = "error_indices.npz"
     
-    # If augmented outputs exist, load them; otherwise compute and save.
     if os.path.exists(aug_file):
         data = np.load(aug_file)
         val_prob_arrays = data['val_prob_arrays']
@@ -200,7 +204,6 @@ def main():
                  test_uncertainty_arrays=test_uncertainty_arrays)
         print("Computed and saved augmented outputs.")
     
-    # If extracted features exist, load them; otherwise compute and save.
     if os.path.exists(feat_file):
         feat_data = np.load(feat_file)
         val_features = feat_data['val_features']
@@ -212,7 +215,6 @@ def main():
         np.savez(feat_file, val_features=val_features, test_features=test_features)
         print("Computed and saved extracted features.")
     
-    # If error indices exist, load them; otherwise compute and save.
     if os.path.exists(err_file):
         err_data = np.load(err_file)
         val_error_index = err_data['val_error_index']
@@ -231,22 +233,52 @@ def main():
     val_labels = np.zeros(len(valloader.dataset), dtype=int)
     val_labels[val_error_index] = 1
 
-    # Build and train the ranking model using XGBoost.
-    xgb_rank_params = {
-        'objective': 'rank:pairwise',
-        'colsample_bytree': 0.5,
-        'nthread': -1,
-        'eval_metric': 'ndcg',
-        'max_depth': 5,
-        'min_child_weight': 1,
-        'learning_rate': 0.05,
-    }
-    train_data = DMatrix(val_features, label=val_labels)
-    rankModel = xgboost.train(xgb_rank_params, train_data)
+    # ----- Use a Neural Network for Ranking Instead of XGBoost -----
+    # Define a simple ranking network
+    class RankingNet(nn.Module):
+        def __init__(self, input_dim, hidden_dim=64):
+            super(RankingNet, self).__init__()
+            self.fc1 = nn.Linear(input_dim, hidden_dim)
+            self.relu = nn.ReLU()
+            self.fc2 = nn.Linear(hidden_dim, 2)  # Binary output
     
-    # Predict scores on test features.
-    test_data = DMatrix(test_features)
-    scores = rankModel.predict(test_data)
+        def forward(self, x):
+            x = self.relu(self.fc1(x))
+            x = self.fc2(x)
+            return x
+
+    # Convert features and labels to tensors
+    X_train = torch.tensor(val_features, dtype=torch.float32)
+    y_train = torch.tensor(val_labels, dtype=torch.long)
+    X_test = torch.tensor(test_features, dtype=torch.float32)
+
+    ranking_model = RankingNet(input_dim=val_features.shape[1]).to(device)
+    rank_criterion = nn.CrossEntropyLoss()
+    rank_optimizer = optim.Adam(ranking_model.parameters(), lr=0.001)
+
+    # Training loop for ranking network
+    for epoch in range(50):
+        ranking_model.train()
+        rank_optimizer.zero_grad()
+        
+        outputs = ranking_model(X_train.to(device))
+        loss = rank_criterion(outputs, y_train.to(device))
+        loss.backward()
+        rank_optimizer.step()
+        
+        _, predicted = torch.max(outputs, dim=1)
+        correct = (predicted == y_train.to(device)).sum().item()
+        total = y_train.size(0)
+        accuracy = 100.0 * correct / total
+        
+        print(f"Ranking Model - Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
+    
+    # Inference: use probability of class '1' (bug) as score
+    ranking_model.eval()
+    with torch.no_grad():
+        logits = ranking_model(X_test.to(device))
+        probs = F.softmax(logits, dim=1)
+        scores = probs[:, 1].cpu().numpy()
     
     test_num = len(testloader.dataset)
     is_bug = np.zeros(test_num)
