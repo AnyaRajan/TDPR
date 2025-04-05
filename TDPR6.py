@@ -6,292 +6,201 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-import torchvision
 from sklearn.preprocessing import MinMaxScaler
-from xgboost import DMatrix
-import xgboost
-from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
-import models
-from PIL import Image
 
+# Import your data utilities and metrics functions (e.g., rauc, ATRC)
+from data_util import (
+    get_train_data,
+    get_val_and_test,
+    calculate_avg_pro_diff,
+    calculate_avg_info,
+    calculate_std_info,
+    calculate_label_std,
+    get_num_of_most_diff_class
+)
+
+# Load configuration
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# --- Augmentation and Forward Pass Functions ---
-def calculate_info_entropy_from_probs(probs):
-    return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
-
-def forward_with_augmentations(net, sample, num_aug=100):
-    if isinstance(sample, torch.Tensor):
-        sample = transforms.ToPILImage()(sample.cpu())
-    aug_pipeline = get_augmentation_pipeline()  # Defined in data_util.py
-    prob_list, label_list, uncertainty_list = [], [], []
-    net.eval()
-    with torch.no_grad():
-        for _ in range(num_aug):
-            aug_sample = aug_pipeline(sample).unsqueeze(0).to(device)
-            outputs = net(aug_sample)
-            probs = F.softmax(outputs, dim=1).cpu().numpy().squeeze(0)
-            prob_list.append(probs)
-            label_list.append(np.argmax(probs))
-            uncertainty_list.append(calculate_info_entropy_from_probs(probs))
-    return np.array(prob_list), np.array(label_list), np.array(uncertainty_list)
-
-def generate_augmented_outputs(net, dataset, num_aug=50):
-    num_samples = len(dataset)
-    first_sample, _ = dataset[0]
-    if isinstance(first_sample, torch.Tensor):
-        first_sample = first_sample.to(device)
-    with torch.no_grad():
-        num_classes = net(first_sample.unsqueeze(0)).shape[1]
-    
-    all_prob_arrays = np.zeros((num_samples, num_aug, num_classes))
-    all_label_arrays = np.zeros((num_samples, num_aug))
-    all_uncertainty_arrays = np.zeros((num_samples, num_aug))
-    
-    for idx in range(num_samples):
-        sample, _ = dataset[idx]
-        probs, labels, uncertainties = forward_with_augmentations(net, sample, num_aug=num_aug)
-        all_prob_arrays[idx] = probs
-        all_label_arrays[idx] = labels
-        all_uncertainty_arrays[idx] = uncertainties
-    return all_prob_arrays, all_label_arrays, all_uncertainty_arrays
-
-# --- Helper Functions for Feature Extraction ---
-def calculate_avg_pro_diff(pros):
-    from sklearn.metrics.pairwise import cosine_similarity
-    num_samples, num_aug, _ = pros.shape
-    avg_diffs = np.zeros(num_samples)
-    for i in range(num_samples):
-        ref = pros[i, -1, :].reshape(1, -1)
-        sims = cosine_similarity(pros[i, :num_aug-1, :], ref)
-        distances = 1 - sims.flatten()
-        avg_diffs[i] = np.mean(distances)
-    return avg_diffs
-
-def get_num_of_most_diff_class(labels):
-    num_samples, num_aug = labels.shape
-    max_diff = np.zeros(num_samples, dtype=int)
-    for i in range(num_samples):
-        target = labels[i, -1]
-        diff_counts = {}
-        for j in range(num_aug - 1):
-            if labels[i, j] != target:
-                diff_counts[labels[i, j]] = diff_counts.get(labels[i, j], 0) + 1
-        max_diff[i] = max(diff_counts.values()) if diff_counts else 0
-    return max_diff
 
 def extract_features(pros, labels, infos):
+    """
+    Extract features from model predictions and other statistics.
+    Adjust this function according to your needs.
+    """
+    # Assuming pros is a numpy array with shape [num_samples, num_aug, num_classes]
+    # If necessary, transpose to match your expectation.
+    # For example, here we assume the input is already in proper shape.
     avg_p_diff = calculate_avg_pro_diff(pros)
-    avg_info = np.mean(infos, axis=1)
-    std_info = np.std(infos, axis=1)
-    std_label = np.std(labels, axis=1)
+    avg_info = calculate_avg_info(infos)
+    std_info = calculate_std_info(infos)
+    std_label = calculate_label_std(labels)
     max_diff_num = get_num_of_most_diff_class(labels)
     feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff))
     scaler = MinMaxScaler()
-    return scaler.fit_transform(feature)
+    feature = scaler.fit_transform(feature)
+    return feature
 
-def calculate_info_entropy(pros):
-    entropys = []
-    for pro in pros:
-        entropy = -np.sum(pro * np.log2(pro))
-        entropys.append(entropy)
-    return entropys
 
-# --- Original Test Function (unchanged) ---
-def test(net, testloader):
-    net.eval()
-    correct, total = 0, 0
-    pros, labels, infos, error_index = [], [], [], []
-    with torch.no_grad():
-        for batch_idx, (inputs, targets) in enumerate(testloader):
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = net(inputs)
-            pro = F.softmax(outputs, dim=1).cpu().numpy()
-            pros.extend(pro)
-            infos.extend(calculate_info_entropy(pro))
-            _, predicted = outputs.max(1)
-            labels.extend(predicted.cpu().numpy())
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
-            incorrect_mask = ~predicted.eq(targets)
-            if incorrect_mask.any():
-                incorrect_indices = (batch_idx * testloader.batch_size) + torch.nonzero(incorrect_mask).view(-1)
-                error_index.extend(incorrect_indices.tolist())
-    acc = 100. * correct / total
-    print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
-    return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
-
-import torch
-
-def train(net, num_epochs, optimizer, criterion, trainloader, device):
-    net.to(device)
-    
-    for epoch in range(num_epochs):
-        net.train()  # Set model to training mode
-        correct = 0
-        total = 0
-        running_loss = 0.0
+# Define the Ranking Neural Network
+class RankingNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim=64):
+        super(RankingNet, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.relu = nn.ReLU()
+        # Output a single continuous ranking score
+        self.fc2 = nn.Linear(hidden_dim, 1)
         
-        print(f"\nEpoch: {epoch + 1}")
-        
-        for batch_idx, (inputs, targets) in enumerate(trainloader):
-            inputs, targets = inputs.to(device), targets.to(device)
-            
-            optimizer.zero_grad()
-            outputs = net(inputs)
-            loss = criterion(outputs, targets)
-            loss.backward()
-            optimizer.step()
-            
-            # Compute training accuracy
-            _, predicted = torch.max(outputs, 1)  # Get predicted class
-            correct += (predicted == targets).sum().item()
-            total += targets.size(0)
-            running_loss += loss.item()
-        
-        epoch_acc = 100 * correct / total
-        avg_loss = running_loss / len(trainloader)
+    def forward(self, x):
+        x = self.relu(self.fc1(x))
+        score = self.fc2(x)
+        return score
 
-        print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
-# --- Main Function ---
-def main():
-    # Initialize model and training data.
-    net = models.__dict__[conf.model]().to(device)
-    trainloader = get_train_data(conf.dataset)
+def train_ranking_model(model, X_train, y_train, epochs=15, margin=1.0):
+    """
+    Train the ranking network using MarginRankingLoss.
     
-    # Set up criterion and optimizer for the base network
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(net.parameters(), lr=0.001)
-    
-    # Train the base network
-    train(net, conf.epochs, optimizer, criterion, trainloader, device)
-    
-    # For evaluation, use the clean dataset
-    # Option: Use get_clean_test_dataset() instead of corrupted data loader
-    testloader = get_clean_test_dataset(conf.dataset)
-    
-    # Get validation loader, for example by splitting test data
-    # (You may want to adapt this to your needs.)
-    valloader, _ = get_val_and_test(conf.corruption)  # Or load clean validation data
-    
-    # Generate augmented outputs and extract features from the validation and test sets
-    # (This part remains unchanged.)
-    aug_file = "augmented_outputs.npz"
-    feat_file = "extracted_features.npz"
-    err_file = "error_indices.npz"
-    
-    if os.path.exists(aug_file):
-        data = np.load(aug_file)
-        val_prob_arrays = data['val_prob_arrays']
-        val_label_arrays = data['val_label_arrays']
-        val_uncertainty_arrays = data['val_uncertainty_arrays']
-        test_prob_arrays = data['test_prob_arrays']
-        test_label_arrays = data['test_label_arrays']
-        test_uncertainty_arrays = data['test_uncertainty_arrays']
-        print("Loaded augmented outputs from file.")
-    else:
-        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=100)
-        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=100)
-        np.savez(aug_file,
-                 val_prob_arrays=val_prob_arrays,
-                 val_label_arrays=val_label_arrays,
-                 val_uncertainty_arrays=val_uncertainty_arrays,
-                 test_prob_arrays=test_prob_arrays,
-                 test_label_arrays=test_label_arrays,
-                 test_uncertainty_arrays=test_uncertainty_arrays)
-        print("Computed and saved augmented outputs.")
-    
-    if os.path.exists(feat_file):
-        feat_data = np.load(feat_file)
-        val_features = feat_data['val_features']
-        test_features = feat_data['test_features']
-        print("Loaded extracted features from file.")
-    else:
-        val_features = extract_features(val_prob_arrays, val_label_arrays, val_uncertainty_arrays)
-        test_features = extract_features(test_prob_arrays, test_label_arrays, test_uncertainty_arrays)
-        np.savez(feat_file, val_features=val_features, test_features=test_features)
-        print("Computed and saved extracted features.")
-    
-    if os.path.exists(err_file):
-        err_data = np.load(err_file)
-        val_error_index = err_data['val_error_index']
-        test_error_index = err_data['test_error_index']
-        print("Loaded error indices from file.")
-    else:
-        _, _, _, val_error_index = test(net, valloader)
-        _, _, _, test_error_index = test(net, testloader)
-        np.savez(err_file, val_error_index=val_error_index, test_error_index=test_error_index)
-        print("Computed and saved error indices.")
-    
-    print("Extracted validation features shape:", val_features.shape)
-    print("Extracted test features shape:", test_features.shape)
-    
-    # Create binary labels: 0 for correct predictions, 1 for bug-revealing samples.
-    val_labels = np.zeros(len(valloader.dataset), dtype=int)
-    val_labels[val_error_index] = 1
+    Parameters:
+      X_train: torch.Tensor of shape [N, feature_dim]
+      y_train: torch.Tensor of shape [N] with binary labels (1 for bug, 0 for non-bug)
+      margin: the minimum desired difference between bug and non-bug scores.
+    """
+    model.train()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    margin_loss = nn.MarginRankingLoss(margin=margin)
 
-    # ----- Use a Neural Network for Ranking Instead of XGBoost -----
-    # Define a simple ranking network
-    class RankingNet(nn.Module):
-        def __init__(self, input_dim, hidden_dim=64):
-            super(RankingNet, self).__init__()
-            self.fc1 = nn.Linear(input_dim, hidden_dim)
-            self.relu = nn.ReLU()
-            self.fc2 = nn.Linear(hidden_dim, 2)  # Binary output
-    
-        def forward(self, x):
-            x = self.relu(self.fc1(x))
-            x = self.fc2(x)
-            return x
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+        scores = model(X_train).squeeze()  # Shape: [N]
 
-    # Convert features and labels to tensors
-    X_train = torch.tensor(val_features, dtype=torch.float32)
-    y_train = torch.tensor(val_labels, dtype=torch.long)
-    X_test = torch.tensor(test_features, dtype=torch.float32)
+        # Find indices of positive (bug) and negative samples.
+        pos_indices = (y_train == 1).nonzero(as_tuple=True)[0]
+        neg_indices = (y_train == 0).nonzero(as_tuple=True)[0]
 
-    ranking_model = RankingNet(input_dim=val_features.shape[1]).to(device)
-    rank_criterion = nn.CrossEntropyLoss()
-    rank_optimizer = optim.Adam(ranking_model.parameters(), lr=0.001)
+        if len(pos_indices) == 0 or len(neg_indices) == 0:
+            print("Not enough positive or negative samples for ranking.")
+            continue
 
-    # Training loop for ranking network
-    for epoch in range(50):
-        ranking_model.train()
-        rank_optimizer.zero_grad()
-        
-        outputs = ranking_model(X_train.to(device))
-        loss = rank_criterion(outputs, y_train.to(device))
+        # Get scores for each group.
+        pos_scores = scores[pos_indices]
+        neg_scores = scores[neg_indices]
+
+        # Create all pairs: positive should be higher than negative.
+        pos_scores_exp = pos_scores.unsqueeze(1).expand(-1, len(neg_scores))
+        neg_scores_exp = neg_scores.unsqueeze(0).expand(len(pos_scores), -1)
+
+        # The target for MarginRankingLoss is 1: pos_score should exceed neg_score.
+        target = torch.ones_like(pos_scores_exp)
+
+        loss = margin_loss(pos_scores_exp, neg_scores_exp, target)
         loss.backward()
-        rank_optimizer.step()
-        
-        _, predicted = torch.max(outputs, dim=1)
-        correct = (predicted == y_train.to(device)).sum().item()
-        total = y_train.size(0)
-        accuracy = 100.0 * correct / total
-        
-        print(f"Ranking Model - Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
+        optimizer.step()
+
+        print(f"Ranking Model - Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}")
+
+
+def main():
+    # ---------------------------
+    # Data Loading and Feature Extraction
+    # ---------------------------
+    # Load training data for the base classifier if needed to extract features.
+    # Here we assume you already trained a classifier and extracted its outputs.
+    # For demonstration, we use the validation set to extract features.
+    valloader, testloader = get_val_and_test(conf.corruption)
     
-    # Inference: use probability of class '1' (bug) as score
+    # Here, we assume your test() function runs the classifier to get probabilities,
+    # predicted labels, and some measure of uncertainty (infos).
+    def test(net, loader):
+        net.eval()
+        pros = []
+        labels = []
+        infos = []
+        error_index = []
+        with torch.no_grad():
+            for batch_idx, (inputs, targets) in enumerate(loader):
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = net(inputs)
+                pro = F.softmax(outputs, dim=1).cpu().numpy()
+                pros.extend(pro)
+                # Calculate information entropy for each sample
+                info = -np.sum(pro * np.log2(pro + 1e-12), axis=1)
+                infos.extend(info)
+                _, predicted = outputs.max(1)
+                labels.extend(predicted.cpu().numpy())
+                # Record error indices (if prediction does not match target)
+                incorrect_mask = ~predicted.eq(targets)
+                if incorrect_mask.any():
+                    incorrect_indices = (batch_idx * loader.batch_size) + torch.nonzero(incorrect_mask).view(-1)
+                    error_index.extend(incorrect_indices.tolist())
+        return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
+
+    # For this demo, we assume the classifier is already trained and saved.
+    # Load your classifier model (this may be a CNN, for example) from your models module.
+    # Replace `conf.model` with your classifier model name.
+    import models  # your classifier is defined here
+    net = models.__dict__[conf.model]().to(device)
+    
+    # Optionally load pretrained weights for net if available.
+    # net.load_state_dict(torch.load("path/to/pretrained_weights.pth"))
+    
+    # Get classifier outputs from validation and test sets.
+    val_pros, val_labels, val_infos, val_error_index = test(net, valloader)
+    test_pros, test_labels, test_infos, test_error_index = test(net, testloader)
+    
+    # Extract features from the classifier outputs
+    val_features = extract_features(val_pros, val_labels, val_infos)
+    test_features = extract_features(test_pros, test_labels, test_infos)
+    
+    # Create binary labels for ranking: 1 for bug-revealing samples, 0 otherwise.
+    # Here, we assume error indices indicate bug-revealing samples.
+    val_bug_labels = np.zeros(len(valloader.dataset), dtype=int)
+    val_bug_labels[val_error_index] = 1
+
+    # ---------------------------
+    # Ranking Network Training
+    # ---------------------------
+    # Convert features and labels to torch tensors.
+    X_train = torch.tensor(val_features, dtype=torch.float32)
+    y_train = torch.tensor(val_bug_labels, dtype=torch.float32)  # using float for ranking loss
+
+    # Define the ranking network.
+    input_dim = X_train.shape[1]
+    ranking_model = RankingNet(input_dim=input_dim, hidden_dim=64).to(device)
+
+    # Train the ranking model using pairwise margin ranking loss.
+    train_ranking_model(ranking_model, X_train.to(device), y_train.to(device), epochs=50, margin=1.0)
+
+    # ---------------------------
+    # Inference and Ranking Evaluation
+    # ---------------------------
     ranking_model.eval()
     with torch.no_grad():
-        logits = ranking_model(X_test.to(device))
-        probs = F.softmax(logits, dim=1)
-        scores = probs[:, 1].cpu().numpy()
-    
+        X_test = torch.tensor(test_features, dtype=torch.float32).to(device)
+        # Obtain continuous ranking scores
+        scores = ranking_model(X_test).squeeze().cpu().numpy()
+
+    # Sort test samples by their scores in descending order.
     test_num = len(testloader.dataset)
-    is_bug = np.zeros(test_num)
+    # Create binary labels for test set using error indices (1 if bug-revealing, 0 otherwise)
+    is_bug = np.zeros(test_num, dtype=int)
     is_bug[test_error_index] = 1
-    index = np.argsort(scores)[::-1]
-    is_bug = is_bug[index]
-    
-    print("RAUC@100:", rauc(is_bug, 100))
-    print("RAUC@200:", rauc(is_bug, 200))
-    print("RAUC@500:", rauc(is_bug, 500))
-    print("RAUC@1000:", rauc(is_bug, 1000))
-    print("RAUC@all:", rauc(is_bug, test_num))
-    print("ATRC:", ATRC(is_bug, len(test_error_index)))
+
+    # Get ranking order based on scores
+    sorted_indices = np.argsort(scores)[::-1]
+    is_bug_ranked = is_bug[sorted_indices]
+
+    # Evaluate ranking with your metrics, e.g., RAUC and ATRC.
+    # These functions should be defined in your codebase.
+    print("RAUC@100:", rauc(is_bug_ranked, 100))
+    print("RAUC@200:", rauc(is_bug_ranked, 200))
+    print("RAUC@500:", rauc(is_bug_ranked, 500))
+    print("RAUC@1000:", rauc(is_bug_ranked, 1000))
+    print("RAUC@all:", rauc(is_bug_ranked, test_num))
+    print("ATRC:", ATRC(is_bug_ranked, len(test_error_index)))
+
 
 if __name__ == '__main__':
     main()
