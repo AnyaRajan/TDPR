@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision
 from sklearn.preprocessing import MinMaxScaler
+from scipy import stats
 from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
 import models
@@ -15,12 +16,10 @@ from PIL import Image
 
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# --- Augmentation and Forward Pass Functions ---
 def calculate_info_entropy_from_probs(probs):
     return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
 
-def forward_with_augmentations(net, sample, num_aug=100):
+def forward_with_augmentations(net, sample, num_aug=200):  # Increased from 100 to 200
     if isinstance(sample, torch.Tensor):
         sample = transforms.ToPILImage()(sample.cpu())
     aug_pipeline = get_augmentation_pipeline()  # Defined in data_util.py
@@ -36,7 +35,7 @@ def forward_with_augmentations(net, sample, num_aug=100):
             uncertainty_list.append(calculate_info_entropy_from_probs(probs))
     return np.array(prob_list), np.array(label_list), np.array(uncertainty_list)
 
-def generate_augmented_outputs(net, dataset, num_aug=100):
+def generate_augmented_outputs(net, dataset, num_aug=200):  # Increased from 100 to 200
     num_samples = len(dataset)
     first_sample, _ = dataset[0]
     if isinstance(first_sample, torch.Tensor):
@@ -80,7 +79,33 @@ def get_num_of_most_diff_class(labels):
         max_diff[i] = max(diff_counts.values()) if diff_counts else 0
     return max_diff
 
+def calculate_variance_of_top_k_probs(pros, k=3):
+    """Calculate variance of top-k probability values across augmentations"""
+    num_samples, num_aug, num_classes = pros.shape
+    var_top_k = np.zeros(num_samples)
+    
+    for i in range(num_samples):
+        top_k_values = np.sort(pros[i], axis=1)[:, -k:]  # Get top-k values for each augmentation
+        var_top_k[i] = np.mean(np.var(top_k_values, axis=0))  # Average variance across top-k positions
+        
+    return var_top_k
+
+def calculate_prediction_flip_rate(labels):
+    """Calculate how frequently the prediction changes across augmentations"""
+    num_samples, num_aug = labels.shape
+    flip_rates = np.zeros(num_samples)
+    
+    for i in range(num_samples):
+        flips = np.sum(labels[i, 1:] != labels[i, :-1])
+        flip_rates[i] = flips / (num_aug - 1)
+        
+    return flip_rates
+
 def extract_enhanced_features(pros, labels, infos):
+    """Extract enhanced features for bug detection"""
+    # Import needed modules
+    from sklearn.decomposition import PCA
+    
     # Current features
     avg_p_diff = calculate_avg_pro_diff(pros)
     avg_info = np.mean(infos, axis=1)
@@ -88,43 +113,76 @@ def extract_enhanced_features(pros, labels, infos):
     std_label = np.std(labels, axis=1)
     max_diff_num = get_num_of_most_diff_class(labels)
     
-    # New features for standard CIFAR-10
+    # Top prediction probabilities
+    mean_top_prob = np.mean(np.max(pros, axis=2), axis=1)
+    std_top_prob = np.std(np.max(pros, axis=2), axis=1)
+    
     # Top-2 probability difference (margin between most confident and second most confident class)
     sorted_probs = np.sort(pros, axis=2)[:, :, -2:]  # Get top 2 probs for each augmentation
     margin = sorted_probs[:, :, 1] - sorted_probs[:, :, 0]  # Difference between top 2
     avg_margin = np.mean(margin, axis=1)
     std_margin = np.std(margin, axis=1)
+    min_margin = np.min(margin, axis=1)  # Minimum margin is often indicative of potential bugs
     
     # Consistency of top prediction across augmentations
     modal_class = stats.mode(labels, axis=1)[0].flatten()
     consistency = np.array([np.sum(labels[i] == modal_class[i]) / labels.shape[1] for i in range(labels.shape[0])])
     
+    # New feature: Prediction flip rate
+    flip_rate = calculate_prediction_flip_rate(labels)
+    
+    # New feature: Variance of top-k probabilities
+    var_top_3 = calculate_variance_of_top_k_probs(pros, k=3)
+    
     # Class-specific confidence statistics
+    num_classes = pros.shape[2]
     class_conf_stats = []
-    for i in range(10):  # CIFAR-10 has 10 classes
+    for i in range(num_classes):
         class_mask = (labels == i)
         class_conf = np.zeros(pros.shape[0])
         for j in range(pros.shape[0]):
             if np.any(class_mask[j]):
                 class_conf[j] = np.mean(np.max(pros[j, class_mask[j]], axis=1))
+            else:
+                # If no augmentations predict this class, use the mean probability for this class
+                class_conf[j] = np.mean(pros[j, :, i])
         class_conf_stats.append(class_conf)
     class_conf_stats = np.column_stack(class_conf_stats)
     
-    # Combine all features
-    feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff,
-                              avg_margin, std_margin, consistency, class_conf_stats))
+    # Additional feature: Entropy variance across different augmentations
+    entropy_var = np.var(infos, axis=1)
     
+    # Additional feature: Maximum entropy
+    max_entropy = np.max(infos, axis=1)
+    
+    # Combine all features
+    feature = np.column_stack((
+        std_label, avg_info, std_info, entropy_var, max_entropy, 
+        max_diff_num, avg_p_diff, avg_margin, std_margin, min_margin,
+        mean_top_prob, std_top_prob, consistency, flip_rate, var_top_3,
+        class_conf_stats
+    ))
+    
+    # Apply dimensionality reduction if feature space is too large
+    if feature.shape[1] > 50:
+        pca = PCA(n_components=min(feature.shape[0], 50))
+        feature = pca.fit_transform(feature)
+    
+    # Normalize features
     scaler = MinMaxScaler()
     return scaler.fit_transform(feature)
+
+# Use the enhanced feature extraction function as extract_features for compatibility
+extract_features = extract_enhanced_features
 
 def calculate_info_entropy(pros):
     entropys = []
     for pro in pros:
-        entropy = -np.sum(pro * np.log2(pro))
+        entropy = -np.sum(pro * np.log2(pro + 1e-12))  # Added epsilon to avoid log(0)
         entropys.append(entropy)
     return entropys
 
-# --- Original Test Function (unchanged) ---
+# --- Test Function (improved) ---
 def test(net, testloader):
     net.eval()
     correct, total = 0, 0
@@ -148,10 +206,11 @@ def test(net, testloader):
     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
-import torch
-
+# --- Training Function (improved) ---
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
     net.to(device)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
+    best_loss = float('inf')
     
     for epoch in range(num_epochs):
         net.train()  # Set model to training mode
@@ -178,38 +237,65 @@ def train(net, num_epochs, optimizer, criterion, trainloader, device):
         
         epoch_acc = 100 * correct / total
         avg_loss = running_loss / len(trainloader)
+        
+        # Update learning rate based on validation loss
+        scheduler.step(avg_loss)
 
-        print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%, LR: {optimizer.param_groups[0]['lr']:.6f}")
         
-class CIFAR10BugNet(nn.Module):
-    def __init__(self, input_dim):
-        super(CIFAR10BugNet, self).__init__()
+        # Save best model
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(net.state_dict(), 'best_model.pth')
+            print("Model saved!")
+
+# --- Updated BugNet (with improved architecture) ---
+class BugNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim=128):
+        super(BugNet, self).__init__()
         
-        # Feature processing layers
+        # Feature processing layers with wider network and stronger regularization
         self.feature_layers = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(input_dim, hidden_dim * 2),
+            nn.BatchNorm1d(hidden_dim * 2),
             nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
+            nn.Dropout(0.4),
             
-            nn.Linear(128, 64),
-            nn.BatchNorm1d(64),
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.4),
+            
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.BatchNorm1d(hidden_dim // 2),
             nn.LeakyReLU(0.2),
             nn.Dropout(0.3)
         )
         
+        # Attention mechanism for feature importance
+        self.attention = nn.Sequential(
+            nn.Linear(hidden_dim // 2, hidden_dim // 4),
+            nn.Tanh(),
+            nn.Linear(hidden_dim // 4, 1)
+        )
+        
         # Classification head
         self.classifier = nn.Sequential(
-            nn.Linear(64, 32),
+            nn.Linear(hidden_dim // 2, hidden_dim // 4),
             nn.LeakyReLU(0.2),
-            nn.Linear(32, 2)
+            nn.Linear(hidden_dim // 4, 2)
         )
         
     def forward(self, x):
         features = self.feature_layers(x)
-        return self.classifier(features)
+        
+        # Apply attention
+        attention_weights = torch.sigmoid(self.attention(features))
+        weighted_features = features * attention_weights
+        
+        return self.classifier(weighted_features)
 
-# --- Main Function ---
+# --- Main Function (improved) ---
 def main():
     # Initialize model and training data.
     net = models.__dict__[conf.model]().to(device)
@@ -242,8 +328,8 @@ def main():
         test_uncertainty_arrays = data['test_uncertainty_arrays']
         print("Loaded augmented outputs from file.")
     else:
-        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=100)
-        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=100)
+        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=200)
+        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=200)
         np.savez(aug_file,
                  val_prob_arrays=val_prob_arrays,
                  val_label_arrays=val_label_arrays,
@@ -284,40 +370,117 @@ def main():
     val_labels = np.zeros(len(valloader.dataset), dtype=int)
     val_labels[val_error_index] = 1
 
-
-    # Hyperparameter for hidden layer size
-    hidden_dim = 64  # You can make this a configurable argument
-
+    # Handle class imbalance with weighted loss
+    pos_weight = len(val_labels) / max(1, np.sum(val_labels))
+    print(f"Positive class weight: {pos_weight:.2f}")
+    
+    # Handle imbalanced dataset using class weights
+    num_pos = np.sum(val_labels)
+    num_neg = len(val_labels) - num_pos
+    print(f"Positive samples: {num_pos}, Negative samples: {num_neg}")
+    
+    # Use a larger hidden dimension for the bug detector
+    hidden_dim = 128  # Increased from 64
+    
     # Convert data to PyTorch tensors
     X_train = torch.tensor(val_features, dtype=torch.float32)
     y_train = torch.tensor(val_labels, dtype=torch.long)
     X_test = torch.tensor(test_features, dtype=torch.float32)
-
+    
     # Define model, loss, optimizer
     model = BugNet(input_dim=val_features.shape[1], hidden_dim=hidden_dim).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    # Training loop
-    model.train()
-    for epoch in range(50):
+    
+    # Use weighted cross-entropy loss to handle class imbalance
+    class_weights = torch.tensor([1.0, pos_weight], dtype=torch.float32).to(device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    
+    # Use AdamW optimizer with weight decay for better generalization
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
+    
+    # Add learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=5, verbose=True
+    )
+    
+    # Training loop with validation
+    best_val_loss = float('inf')
+    patience = 10  # early stopping patience
+    patience_counter = 0
+    
+    # Split validation set into training and validation
+    val_size = int(0.8 * len(X_train))
+    train_indices = np.random.choice(len(X_train), size=val_size, replace=False)
+    val_indices = np.array([i for i in range(len(X_train)) if i not in train_indices])
+    
+    X_train_split = X_train[train_indices]
+    y_train_split = y_train[train_indices]
+    X_val_split = X_train[val_indices]
+    y_val_split = y_train[val_indices]
+    
+    print(f"Training on {len(X_train_split)} samples, validating on {len(X_val_split)} samples")
+    
+    # Create DataLoader for mini-batch training
+    train_dataset = torch.utils.data.TensorDataset(X_train_split, y_train_split)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=64, shuffle=True
+    )
+    
+    num_epochs = 100  # Increased from 50
+    for epoch in range(num_epochs):
+        # Training
         model.train()
-        optimizer.zero_grad()
+        train_loss = 0.0
+        correct = 0
+        total = 0
         
-        outputs = model(X_train.to(device))
-        loss = criterion(outputs, y_train.to(device))
-        loss.backward()
-        optimizer.step()
+        for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+            
+            train_loss += loss.item()
+            _, predicted = torch.max(outputs, 1)
+            total += targets.size(0)
+            correct += (predicted == targets).sum().item()
         
-        # Compute accuracy
-        _, predicted = torch.max(outputs, dim=1)
-        correct = (predicted == y_train.to(device)).sum().item()
-        total = y_train.size(0)
-        accuracy = 100.0 * correct / total
+        train_loss /= len(train_loader)
+        train_acc = 100.0 * correct / total
         
-        print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
-
-
+        # Validation
+        model.eval()
+        with torch.no_grad():
+            val_outputs = model(X_val_split.to(device))
+            val_loss = criterion(val_outputs, y_val_split.to(device))
+            _, val_predicted = torch.max(val_outputs, 1)
+            val_correct = (val_predicted == y_val_split.to(device)).sum().item()
+            val_acc = 100.0 * val_correct / len(y_val_split)
+        
+        print(f"Epoch {epoch+1}: "
+              f"Train Loss = {train_loss:.4f}, Train Acc = {train_acc:.2f}%, "
+              f"Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.2f}%")
+        
+        # Update scheduler
+        scheduler.step(val_loss)
+        
+        # Early stopping and model checkpoint
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), 'best_bugnet.pth')
+            print("Saved best model!")
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= patience:
+                print(f"Early stopping after {epoch+1} epochs")
+                break
+    
+    # Load best model for evaluation
+    model.load_state_dict(torch.load('best_bugnet.pth'))
+    
     # Get predicted probabilities for test set
     model.eval()
     with torch.no_grad():
