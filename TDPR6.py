@@ -181,18 +181,33 @@ def train(net, num_epochs, optimizer, criterion, trainloader, device):
 
         print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
         
-# --- Simple Feedforward Neural Network for Bug Detection ---
-class BugNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super(BugNet, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_dim, 2)  # Binary classification (0 or 1)
-
+class CIFAR10BugNet(nn.Module):
+    def __init__(self, input_dim):
+        super(CIFAR10BugNet, self).__init__()
+        
+        # Feature processing layers
+        self.feature_layers = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.BatchNorm1d(128),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3)
+        )
+        
+        # Classification head
+        self.classifier = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.LeakyReLU(0.2),
+            nn.Linear(32, 2)
+        )
+        
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        features = self.feature_layers(x)
+        return self.classifier(features)
 
 # --- Main Function ---
 def main():
