@@ -537,15 +537,15 @@ def main():
     device = setup_gpu()
     
     # Your model initialization code here
-    # net = models.__dict__[conf.model]().to(device)
-    # trainloader = get_train_data(conf.dataset)
+    net = models.__dict__[conf.model]().to(device)
+    trainloader = get_train_data(conf.dataset)
     
     # Your training code here
-    # train(net, conf.epochs, optimizer, criterion, trainloader, device)
+    train(net, conf.epochs, optimizer, criterion, trainloader, device)
     
     # Run ensemble bug detection
     print("\n--- Running T4 GPU-Optimized Ensemble Bug Detection ---")
-    # final_scores, is_bug = run_ensemble_bug_detection(net, valloader, testloader, device)
+    final_scores, is_bug = run_ensemble_bug_detection(net, valloader, testloader, device)
     
 if __name__ == '__main__':
     main()
