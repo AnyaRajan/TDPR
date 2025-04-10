@@ -26,21 +26,22 @@ from nltk.corpus import stopwords
 import corrupted_text
 import dataclasses
 from torchvision import transforms
+import torchvision.transforms as transforms
 from PIL import Image
-def get_augmentation_pipeline():
-    return transforms.Compose([
-        # Spatial transformations
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(15),
+# def get_augmentation_pipeline():
+#     return transforms.Compose([
+#         # Spatial transformations
+#         transforms.RandomCrop(32, padding=4),
+#         transforms.RandomHorizontalFlip(p=0.5),
+#         transforms.RandomRotation(15),
         
-        # Color/intensity transformations
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+#         # Color/intensity transformations
+#         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         
-        # Conversion and normalization
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-    ])
+#         # Conversion and normalization
+#         transforms.ToTensor(),
+#         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+#     ])
 # def get_augmentation_pipeline():
 #     return transforms.Compose([
 #         transforms.RandomCrop(32, padding=4),
@@ -50,21 +51,20 @@ def get_augmentation_pipeline():
 #         transforms.Normalize((0.4914, 0.4822, 0.4465),
 #                              (0.2023, 0.1994, 0.2010))
 #     ])
-import torchvision.transforms as transforms
 
-# def get_augmentation_pipeline():
-#     return transforms.Compose([
-#         transforms.RandomResizedCrop(32, scale=(0.8, 1.2)),  # Randomly scale images
-#         transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability
-#         transforms.RandomVerticalFlip(p=0.2),  # Vertical flip with 20% probability
-#         transforms.RandomRotation(30),  # Rotate up to ±30 degrees
-#         transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # Adjust color
-#         transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.8, 1.2)),  # Perspective shifts
-#         transforms.RandomPerspective(distortion_scale=0.2, p=0.5),  # Introduce warping
-#         transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Random blurring
-#         transforms.ToTensor(),
-#         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-#     ])
+def get_augmentation_pipeline():
+    return transforms.Compose([
+        transforms.RandomResizedCrop(32, scale=(0.8, 1.2)),  # Randomly scale images
+        transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability
+        transforms.RandomVerticalFlip(p=0.2),  # Vertical flip with 20% probability
+        transforms.RandomRotation(30),  # Rotate up to ±30 degrees
+        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # Adjust color
+        transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.8, 1.2)),  # Perspective shifts
+        transforms.RandomPerspective(distortion_scale=0.2, p=0.5),  # Introduce warping
+        transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Random blurring
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    ])
 
 
 @dataclasses.dataclass
@@ -280,57 +280,58 @@ def get_clean_test_dataset(dataset):
             root=conf.data_root, train=False, download=True, transform=transform_test)
         testloader = torch.utils.data.DataLoader(
             testset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
-    elif dataset == 'imagenet':
-        transform_train = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((64, 64)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406),
-                                 (0.229, 0.224, 0.225)),
-        ])
-        test_data = np.load(conf.data_root + '/tiny-imagenet-200/test_data.npy')
-        test_label = np.load(conf.data_root + '/tiny-imagenet-200/test_label.npy')
-        trainset = CustomDataset(test_data, test_label, transform=transform_train)
-        testloader = torch.utils.data.DataLoader(
-            trainset, batch_size=60, shuffle=False, num_workers=4, pin_memory=True)
-    elif dataset == 'imdb':
-        x_train = np.load("dataset/IMDB/train_data.npy", allow_pickle=True)
-        y_train = np.load("dataset/IMDB/train_label.npy", allow_pickle=True)
-        x_test = np.load("dataset/IMDB/test_data.npy", allow_pickle=True)
-        y_test = np.load("dataset/IMDB/test_label.npy", allow_pickle=True)
-        x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
+    # elif dataset == 'imagenet':
+    #     transform_train = transforms.Compose([
+    #         transforms.ToPILImage(),
+    #         transforms.Resize((64, 64)),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.485, 0.456, 0.406),
+    #                              (0.229, 0.224, 0.225)),
+    #     ])
+    #     test_data = np.load(conf.data_root + '/tiny-imagenet-200/test_data.npy')
+    #     test_label = np.load(conf.data_root + '/tiny-imagenet-200/test_label.npy')
+    #     trainset = CustomDataset(test_data, test_label, transform=transform_train)
+    #     testloader = torch.utils.data.DataLoader(
+    #         trainset, batch_size=60, shuffle=False, num_workers=4, pin_memory=True)
+    # elif dataset == 'imdb':
+    #     x_train = np.load("dataset/IMDB/train_data.npy", allow_pickle=True)
+    #     y_train = np.load("dataset/IMDB/train_label.npy", allow_pickle=True)
+    #     x_test = np.load("dataset/IMDB/test_data.npy", allow_pickle=True)
+    #     y_test = np.load("dataset/IMDB/test_label.npy", allow_pickle=True)
+    #     x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
 
 
-        x_train_pad = padding_(x_train, 500)
-        x_test_pad = padding_(x_test, 500)
+    #     x_train_pad = padding_(x_train, 500)
+    #     x_test_pad = padding_(x_test, 500)
 
-        train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
-        valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
+    #     train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
+    #     valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
 
-        batch_size = 50
+    #     batch_size = 50
 
-        train_loader = torch.utils.data.DataLoader(train_data, shuffle=True, num_workers=4, batch_size=batch_size)
-        testloader = torch.utils.data.DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=batch_size)
-    elif dataset =="SMS":
-        data_root = Path("dataset/SMS")
+    #     train_loader = torch.utils.data.DataLoader(train_data, shuffle=True, num_workers=4, batch_size=batch_size)
+    #     testloader = torch.utils.data.DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=batch_size)
+    # elif dataset =="SMS":
+    #     data_root = Path("dataset/SMS")
 
-        x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
-        y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
-        x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
-        y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
-        x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
+    #     x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
+    #     y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
+    #     x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
+    #     y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
+    #     x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
 
-        # x_train_pad = padding_(x_train, 150)
-        x_test_pad = padding_(x_test, 55)
-        # train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
-        valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
+    #     # x_train_pad = padding_(x_train, 150)
+    #     x_test_pad = padding_(x_test, 55)
+    #     # train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
+    #     valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
 
-        # train_batch_size = 4
-        test_batch_size = 50
+    #     # train_batch_size = 4
+    #     test_batch_size = 50
 
-        # train_loader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=train_batch_size)
-        testloader = torch.utils.data.DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    #     # train_loader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=train_batch_size)
+    #     testloader = torch.utils.data.DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    
     return testloader
 
 def get_corruption_test_data(corruption=conf.corruption):
@@ -347,79 +348,79 @@ def get_corruption_test_data(corruption=conf.corruption):
         testset = CustomDataset(test_data, test_label, transform_test)
         testloader = torch.utils.data.DataLoader(
             testset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
-    elif conf.dataset == 'imagenet':
-        transform_train = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((64, 64)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406),
-                                 (0.229, 0.224, 0.225)),
-        ])
-        test_data = np.load(conf.data_root + '/tiny-imagenet-200/' + corruption + '_test_data.npy')
-        test_label = np.load(conf.data_root + '/tiny-imagenet-200/' + corruption + '_test_label.npy')
-        trainset = CustomDataset(test_data, test_label, transform=transform_train)
-        testloader = torch.utils.data.DataLoader(
-            trainset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
-    elif conf.dataset == 'imdb':
-        data_root=Path("dataset/IMDB")
-        x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
-        y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
-        x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
-        y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
-        if (data_root / Path(corruption + "_test_data.npy")).exists():
-            x_test = np.load(data_root / Path(corruption + "_test_data.npy"), allow_pickle=True)
-        else:
-            x_train, x_test = x_train.tolist(), x_test.tolist()
-            corruptor = corrupted_text.TextCorruptor(base_dataset=x_test + x_train,
-                                                     cache_dir=".mycache")
-            weights = CorruptionWeights()
-            weights.set_weights(corruption)
-            imdb_corrupted = corruptor.corrupt(x_test, severity=1, seed=42, weights=weights)
-            x_train = np.array(x_train)
-            x_test = np.array(imdb_corrupted)
-            np.save(data_root / Path(corruption + "_test_data.npy"), x_test)
+    # elif conf.dataset == 'imagenet':
+    #     transform_train = transforms.Compose([
+    #         transforms.ToPILImage(),
+    #         transforms.Resize((64, 64)),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.485, 0.456, 0.406),
+    #                              (0.229, 0.224, 0.225)),
+    #     ])
+    #     test_data = np.load(conf.data_root + '/tiny-imagenet-200/' + corruption + '_test_data.npy')
+    #     test_label = np.load(conf.data_root + '/tiny-imagenet-200/' + corruption + '_test_label.npy')
+    #     trainset = CustomDataset(test_data, test_label, transform=transform_train)
+    #     testloader = torch.utils.data.DataLoader(
+    #         trainset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
+    # elif conf.dataset == 'imdb':
+    #     data_root=Path("dataset/IMDB")
+    #     x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
+    #     y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
+    #     x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
+    #     y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
+    #     if (data_root / Path(corruption + "_test_data.npy")).exists():
+    #         x_test = np.load(data_root / Path(corruption + "_test_data.npy"), allow_pickle=True)
+    #     else:
+    #         x_train, x_test = x_train.tolist(), x_test.tolist()
+    #         corruptor = corrupted_text.TextCorruptor(base_dataset=x_test + x_train,
+    #                                                  cache_dir=".mycache")
+    #         weights = CorruptionWeights()
+    #         weights.set_weights(corruption)
+    #         imdb_corrupted = corruptor.corrupt(x_test, severity=1, seed=42, weights=weights)
+    #         x_train = np.array(x_train)
+    #         x_test = np.array(imdb_corrupted)
+    #         np.save(data_root / Path(corruption + "_test_data.npy"), x_test)
 
-        if (data_root / Path(corruption + "_test_data_pad.npy")).exists():
-            x_test_pad = np.load(data_root / Path(corruption + "_test_data_pad.npy"), allow_pickle=True)
-            y_test_pad=np.load(data_root / Path(corruption + "_test_label_pad.npy"), allow_pickle=True)
-        else:
-            x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
-            y_test_pad=y_test
-            x_test_pad = padding_(x_test, 500).astype(np.int32)
-            np.save(data_root / Path(corruption + "_test_data_pad.npy"), x_test_pad)
-            np.save(data_root / Path(corruption + "_test_label_pad.npy"), y_test_pad)
-        # train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
-        test_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test_pad))
-        testloader=DataLoader(test_data, shuffle=False, num_workers=4, batch_size=50)
+    #     if (data_root / Path(corruption + "_test_data_pad.npy")).exists():
+    #         x_test_pad = np.load(data_root / Path(corruption + "_test_data_pad.npy"), allow_pickle=True)
+    #         y_test_pad=np.load(data_root / Path(corruption + "_test_label_pad.npy"), allow_pickle=True)
+    #     else:
+    #         x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
+    #         y_test_pad=y_test
+    #         x_test_pad = padding_(x_test, 500).astype(np.int32)
+    #         np.save(data_root / Path(corruption + "_test_data_pad.npy"), x_test_pad)
+    #         np.save(data_root / Path(corruption + "_test_label_pad.npy"), y_test_pad)
+    #     # train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
+    #     test_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test_pad))
+    #     testloader=DataLoader(test_data, shuffle=False, num_workers=4, batch_size=50)
+    # elif conf.dataset =='SMS':
+    #     data_root = Path("dataset/SMS")
 
-    elif conf.dataset =='SMS':
-        data_root = Path("dataset/SMS")
+    #     x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
+    #     y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
+    #     x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
+    #     y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
+    #     if (data_root/Path(corruption+"_test_data.npy")).exists():
+    #         x_test = np.load(data_root / Path(corruption+"_test_data.npy"), allow_pickle=True)
+    #     else:
+    #         x_train, x_test = x_train.tolist(), x_test.tolist()
+    #         corruptor = corrupted_text.TextCorruptor(base_dataset=x_test + x_train,
+    #                                                      cache_dir=".mycache")
+    #         weights = CorruptionWeights()
+    #         weights.set_weights(corruption)
+    #         imdb_corrupted = corruptor.corrupt(x_test, severity=1, seed=42, weights=weights)
+    #         x_train = np.array(x_train)
+    #         x_test = np.array(imdb_corrupted)
+    #         np.save(data_root/Path(corruption+"_test_data.npy"),x_test)
+    #     x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
 
-        x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
-        y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
-        x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
-        y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
-        if (data_root/Path(corruption+"_test_data.npy")).exists():
-            x_test = np.load(data_root / Path(corruption+"_test_data.npy"), allow_pickle=True)
-        else:
-            x_train, x_test = x_train.tolist(), x_test.tolist()
-            corruptor = corrupted_text.TextCorruptor(base_dataset=x_test + x_train,
-                                                         cache_dir=".mycache")
-            weights = CorruptionWeights()
-            weights.set_weights(corruption)
-            imdb_corrupted = corruptor.corrupt(x_test, severity=1, seed=42, weights=weights)
-            x_train = np.array(x_train)
-            x_test = np.array(imdb_corrupted)
-            np.save(data_root/Path(corruption+"_test_data.npy"),x_test)
-        x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
+    #     x_test_pad = padding_(x_test, 55)
 
-        x_test_pad = padding_(x_test, 55)
+    #     valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
+    #     test_batch_size = 50
 
-        valid_data = TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
-        test_batch_size = 50
-
-        testloader = DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    #     testloader = DataLoader(valid_data, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    
     return testloader
 
 def get_train_data(dataset):
@@ -436,52 +437,53 @@ def get_train_data(dataset):
             root=conf.data_root, train=True, download=True, transform=transform_train)
         trainloader = torch.utils.data.DataLoader(
             trainset, batch_size=128, shuffle=True, num_workers=4, pin_memory=True)
-    elif dataset == 'imagenet':
-        transform_train = transforms.Compose([
-            transforms.ToPILImage(),
-            # transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406),
-                                 (0.229, 0.224, 0.225)),
-        ])
-        train_data = np.load(conf.data_root + '/tiny-imagenet-200/train_data.npy')
-        train_label = np.load(conf.data_root + '/tiny-imagenet-200/train_label.npy')
-        trainset = CustomDataset(train_data, train_label, transform=transform_train)
-        trainloader = torch.utils.data.DataLoader(
-            trainset, batch_size=50, shuffle=True, num_workers=4, pin_memory=True)
-    elif dataset == 'imdb':
-        data_root = Path("dataset/IMDB")
-        x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
-        y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
-        x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
-        y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
-        if (data_root/Path("train_data_pad.npy")).exists():
-            x_train_pad=np.load(data_root/Path("train_data_pad.npy"), allow_pickle=True)
-            y_train_pad=np.load(data_root/Path("train_label_pad.npy"), allow_pickle=True)
-        else:
-            x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
+    # elif dataset == 'imagenet':
+    #     transform_train = transforms.Compose([
+    #         transforms.ToPILImage(),
+    #         # transforms.Resize((224, 224)),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.485, 0.456, 0.406),
+    #                              (0.229, 0.224, 0.225)),
+    #     ])
+    #     train_data = np.load(conf.data_root + '/tiny-imagenet-200/train_data.npy')
+    #     train_label = np.load(conf.data_root + '/tiny-imagenet-200/train_label.npy')
+    #     trainset = CustomDataset(train_data, train_label, transform=transform_train)
+    #     trainloader = torch.utils.data.DataLoader(
+    #         trainset, batch_size=50, shuffle=True, num_workers=4, pin_memory=True)
+    # elif dataset == 'imdb':
+    #     data_root = Path("dataset/IMDB")
+    #     x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
+    #     y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
+    #     x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
+    #     y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
+    #     if (data_root/Path("train_data_pad.npy")).exists():
+    #         x_train_pad=np.load(data_root/Path("train_data_pad.npy"), allow_pickle=True)
+    #         y_train_pad=np.load(data_root/Path("train_label_pad.npy"), allow_pickle=True)
+    #     else:
+    #         x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
 
-            x_train_pad = padding_(x_train, 500).astype(np.int32)
-            y_train_pad=y_train
-            np.save(data_root/Path("train_label_pad.npy"),y_train_pad)
-            np.save(data_root/Path("train_data_pad.npy"),x_train_pad)
-        train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train_pad))
-        batch_size = 50
-        trainloader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=batch_size)
-    elif dataset == 'SMS':
-        data_root = Path("dataset/SMS")
-        x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
-        y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
-        x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
-        y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
-        x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
+    #         x_train_pad = padding_(x_train, 500).astype(np.int32)
+    #         y_train_pad=y_train
+    #         np.save(data_root/Path("train_label_pad.npy"),y_train_pad)
+    #         np.save(data_root/Path("train_data_pad.npy"),x_train_pad)
+    #     train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train_pad))
+    #     batch_size = 50
+    #     trainloader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=batch_size)
+    # elif dataset == 'SMS':
+    #     data_root = Path("dataset/SMS")
+    #     x_train = np.load(data_root / Path("train_data.npy"), allow_pickle=True)
+    #     y_train = np.load(data_root / Path("train_label.npy"), allow_pickle=True)
+    #     x_test = np.load(data_root / Path("test_data.npy"), allow_pickle=True)
+    #     y_test = np.load(data_root / Path("test_label.npy"), allow_pickle=True)
+    #     x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
 
-        x_train_pad = padding_(x_train, 55)
-        train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
-        train_batch_size = 50
+    #     x_train_pad = padding_(x_train, 55)
+    #     train_data = TensorDataset(torch.from_numpy(x_train_pad), torch.from_numpy(y_train))
+    #     train_batch_size = 50
 
-        trainloader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=train_batch_size)
+    #     trainloader = DataLoader(train_data, shuffle=True, num_workers=4, batch_size=train_batch_size)
+    
     else:
         raise ValueError('Dataset not found')
     return trainloader
@@ -509,72 +511,72 @@ def get_val_and_test(corruption=conf.corruption,ratio=0.75):
         testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
         valloader = torch.utils.data.DataLoader(valset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
     
-    elif conf.dataset == 'imagenet':
-        # Define transforms for clean ImageNet (Tiny ImageNet variant)
-        transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((64, 64)),
-            transforms.RandomHorizontalFlip(),  # You may remove randomness if desired.
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406),
-                                 (0.229, 0.224, 0.225)),
-        ])
-        # Load clean Tiny ImageNet test data from stored NumPy arrays
-        test_data = np.load(conf.data_root + '/tiny-imagenet-200/test_data.npy')
-        test_label = np.load(conf.data_root + '/tiny-imagenet-200/test_label.npy')
-        from data_util import CustomDataset
-        ori_testset = CustomDataset(test_data, test_label, transform=transform)
-        indices = np.arange(len(ori_testset))
-        np.random.shuffle(indices)
-        split = int(np.floor(ratio * len(ori_testset)))
-        test_indices, val_indices = indices[:split], indices[split:]
-        from torch.utils.data import Subset
-        testset = Subset(ori_testset, test_indices)
-        valset = Subset(ori_testset, val_indices)
-        testloader = torch.utils.data.DataLoader(testset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
-        valloader = torch.utils.data.DataLoader(valset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
+    # elif conf.dataset == 'imagenet':
+    #     # Define transforms for clean ImageNet (Tiny ImageNet variant)
+    #     transform = transforms.Compose([
+    #         transforms.ToPILImage(),
+    #         transforms.Resize((64, 64)),
+    #         transforms.RandomHorizontalFlip(),  # You may remove randomness if desired.
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.485, 0.456, 0.406),
+    #                              (0.229, 0.224, 0.225)),
+    #     ])
+    #     # Load clean Tiny ImageNet test data from stored NumPy arrays
+    #     test_data = np.load(conf.data_root + '/tiny-imagenet-200/test_data.npy')
+    #     test_label = np.load(conf.data_root + '/tiny-imagenet-200/test_label.npy')
+    #     from data_util import CustomDataset
+    #     ori_testset = CustomDataset(test_data, test_label, transform=transform)
+    #     indices = np.arange(len(ori_testset))
+    #     np.random.shuffle(indices)
+    #     split = int(np.floor(ratio * len(ori_testset)))
+    #     test_indices, val_indices = indices[:split], indices[split:]
+    #     from torch.utils.data import Subset
+    #     testset = Subset(ori_testset, test_indices)
+    #     valset = Subset(ori_testset, val_indices)
+    #     testloader = torch.utils.data.DataLoader(testset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
+    #     valloader = torch.utils.data.DataLoader(valset, batch_size=30, shuffle=False, num_workers=4, pin_memory=True)
     
-    elif conf.dataset == 'imdb':
-        from pathlib import Path
-        data_root = Path("dataset/IMDB")
-        x_train = np.load(data_root / "train_data.npy", allow_pickle=True)
-        y_train = np.load(data_root / "train_label.npy", allow_pickle=True)
-        x_test = np.load(data_root / "test_data.npy", allow_pickle=True)
-        y_test = np.load(data_root / "test_label.npy", allow_pickle=True)
-        # Use clean x_test and y_test; tokenize and pad them.
-        x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
-        x_test_pad = padding_(x_test, 500).astype(np.int32)
-        ori_testset = torch.utils.data.TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
-        indices = np.arange(len(ori_testset))
-        np.random.shuffle(indices)
-        split = int(np.floor(ratio * len(ori_testset)))
-        test_indices, val_indices = indices[:split], indices[split:]
-        from torch.utils.data import Subset
-        testset = Subset(ori_testset, test_indices)
-        valset = Subset(ori_testset, val_indices)
-        testloader = torch.utils.data.DataLoader(testset, shuffle=False, num_workers=4, batch_size=50)
-        valloader = torch.utils.data.DataLoader(valset, shuffle=False, num_workers=4, batch_size=50)
+    # elif conf.dataset == 'imdb':
+    #     from pathlib import Path
+    #     data_root = Path("dataset/IMDB")
+    #     x_train = np.load(data_root / "train_data.npy", allow_pickle=True)
+    #     y_train = np.load(data_root / "train_label.npy", allow_pickle=True)
+    #     x_test = np.load(data_root / "test_data.npy", allow_pickle=True)
+    #     y_test = np.load(data_root / "test_label.npy", allow_pickle=True)
+    #     # Use clean x_test and y_test; tokenize and pad them.
+    #     x_train, y_train, x_test, y_test, vocab = tockenize(x_train, y_train, x_test, y_test)
+    #     x_test_pad = padding_(x_test, 500).astype(np.int32)
+    #     ori_testset = torch.utils.data.TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
+    #     indices = np.arange(len(ori_testset))
+    #     np.random.shuffle(indices)
+    #     split = int(np.floor(ratio * len(ori_testset)))
+    #     test_indices, val_indices = indices[:split], indices[split:]
+    #     from torch.utils.data import Subset
+    #     testset = Subset(ori_testset, test_indices)
+    #     valset = Subset(ori_testset, val_indices)
+    #     testloader = torch.utils.data.DataLoader(testset, shuffle=False, num_workers=4, batch_size=50)
+    #     valloader = torch.utils.data.DataLoader(valset, shuffle=False, num_workers=4, batch_size=50)
     
-    elif conf.dataset == 'SMS':
-        from pathlib import Path
-        data_root = Path("dataset/SMS")
-        x_train = np.load(data_root / "train_data.npy", allow_pickle=True)
-        y_train = np.load(data_root / "train_label.npy", allow_pickle=True)
-        x_test = np.load(data_root / "test_data.npy", allow_pickle=True)
-        y_test = np.load(data_root / "test_label.npy", allow_pickle=True)
-        # Use clean SMS test data; tokenize and pad them.
-        x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
-        x_test_pad = padding_(x_test, 55)
-        ori_testset = torch.utils.data.TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
-        indices = np.arange(len(ori_testset))
-        np.random.shuffle(indices)
-        split = int(np.floor(ratio * len(ori_testset)))
-        test_indices, val_indices = indices[:split], indices[split:]
-        from torch.utils.data import Subset
-        testset = Subset(ori_testset, test_indices)
-        valset = Subset(ori_testset, val_indices)
-        test_batch_size = 50
-        testloader = torch.utils.data.DataLoader(testset, shuffle=False, num_workers=4, batch_size=test_batch_size)
-        valloader = torch.utils.data.DataLoader(valset, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    # elif conf.dataset == 'SMS':
+    #     from pathlib import Path
+    #     data_root = Path("dataset/SMS")
+    #     x_train = np.load(data_root / "train_data.npy", allow_pickle=True)
+    #     y_train = np.load(data_root / "train_label.npy", allow_pickle=True)
+    #     x_test = np.load(data_root / "test_data.npy", allow_pickle=True)
+    #     y_test = np.load(data_root / "test_label.npy", allow_pickle=True)
+    #     # Use clean SMS test data; tokenize and pad them.
+    #     x_train, x_test, vocab = tockenize_SMS(x_train, x_test)
+    #     x_test_pad = padding_(x_test, 55)
+    #     ori_testset = torch.utils.data.TensorDataset(torch.from_numpy(x_test_pad), torch.from_numpy(y_test))
+    #     indices = np.arange(len(ori_testset))
+    #     np.random.shuffle(indices)
+    #     split = int(np.floor(ratio * len(ori_testset)))
+    #     test_indices, val_indices = indices[:split], indices[split:]
+    #     from torch.utils.data import Subset
+    #     testset = Subset(ori_testset, test_indices)
+    #     valset = Subset(ori_testset, val_indices)
+    #     test_batch_size = 50
+    #     testloader = torch.utils.data.DataLoader(testset, shuffle=False, num_workers=4, batch_size=test_batch_size)
+    #     valloader = torch.utils.data.DataLoader(valset, shuffle=False, num_workers=4, batch_size=test_batch_size)
     
     return valloader, testloader
