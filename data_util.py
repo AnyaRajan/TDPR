@@ -41,29 +41,31 @@ from PIL import Image
 #         transforms.ToTensor(),
 #         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 #     ])
-# def get_augmentation_pipeline():
-#     return transforms.Compose([
-#         transforms.RandomCrop(32, padding=4),
-#         transforms.RandomHorizontalFlip(),
-#         transforms.RandomRotation(15),
-#         transforms.ToTensor(),
-#         transforms.Normalize((0.4914, 0.4822, 0.4465),
-#                              (0.2023, 0.1994, 0.2010))
-#     ])
-
 def get_augmentation_pipeline():
     return transforms.Compose([
-        transforms.RandomResizedCrop(32, scale=(0.8, 1.2)),  # Randomly scale images
-        transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability
-        transforms.RandomVerticalFlip(p=0.2),  # Vertical flip with 20% probability
-        transforms.RandomRotation(30),  # Rotate up to ±30 degrees
-        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # Adjust color
-        transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.8, 1.2)),  # Perspective shifts
-        transforms.RandomPerspective(distortion_scale=0.2, p=0.5),  # Introduce warping
-        transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Random blurring
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        transforms.Normalize((0.4914, 0.4822, 0.4465),
+                             (0.2023, 0.1994, 0.2010))
     ])
+
+
+# def get_augmentation_pipeline():
+#     return transforms.Compose([
+#         transforms.RandomResizedCrop(32, scale=(0.8, 1.2)),  # Randomly scale images
+#         transforms.RandomHorizontalFlip(p=0.5),  # Flip with 50% probability
+#         transforms.RandomVerticalFlip(p=0.2),  # Vertical flip with 20% probability
+#         transforms.RandomRotation(30),  # Rotate up to ±30 degrees
+#         transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2),  # Adjust color
+#         transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.8, 1.2)),  # Perspective shifts
+#         transforms.RandomPerspective(distortion_scale=0.2, p=0.5),  # Introduce warping
+#         transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Random blurring
+#         transforms.ToTensor(),
+#         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+#     ])
 
 
 @dataclasses.dataclass
