@@ -210,7 +210,7 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
 
         rauc_100 = rauc(sorted_flags, 100)
         rauc_500 = rauc(sorted_flags, 500)
-        atrc_val = ATRC(sorted_flags, int(np.sum(test_flags)))
+        atrc_val, _ = ATRC(sorted_flags, int(np.sum(test_flags)))
         results.append((params, rauc_100, rauc_500, atrc_val))
 
     return results
