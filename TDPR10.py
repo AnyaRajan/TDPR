@@ -392,15 +392,21 @@ def main():
 
     # --- Train BugNet (NN) ---
     bugnet = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
-    class_weights = compute_class_weights(y_train, device)
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    # Convert labels to float for BCEWithLogitsLoss
+    y_train_float = y_train.float()
+
+    # Compute positive class weight
+    pos_weight = torch.tensor([(len(y_train_float) - y_train_float.sum()) / y_train_float.sum()]).to(device)
+
+    # Define loss for binary classification
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = torch.optim.Adam(bugnet.parameters(), lr=0.001)
 
     for epoch in range(50):
         bugnet.train()
         optimizer.zero_grad()
         outputs = bugnet(X_train.to(device))
-        loss = criterion(outputs, y_train.to(device))
+        loss = criterion(outputs, y_train_float.to(device))
         loss.backward()
         optimizer.step()
         #calculate accuracy
