@@ -324,47 +324,55 @@ def main():
     # Choose model: "rf" or "nn"
     model_type = conf.model_type    
 
-    if model_type == "nn":
-        model = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
-        class_weights = compute_class_weights(y_train, device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights)
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        # Binary ground-truth bug flags
+    test_flags = np.zeros(len(testloader.dataset))
+    test_flags[test_error_index] = 1
 
-        for epoch in range(50):
-            model.train()
-            optimizer.zero_grad()
-            outputs = model(X_train.to(device))
-            loss = criterion(outputs, y_train.to(device))
-            loss.backward()
-            optimizer.step()
-            # Compute accuracy
-            _, predicted = torch.max(outputs, dim=1)
-            correct = (predicted == y_train.to(device)).sum().item()
-            total = y_train.size(0)
-            accuracy = 100.0 * correct / total
-            print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
+    # --- Train BugNet (NN) ---
+    bugnet = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
+    class_weights = compute_class_weights(y_train, device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    optimizer = torch.optim.Adam(bugnet.parameters(), lr=0.001)
 
-        model.eval()
-        with torch.no_grad():
-            probs = F.softmax(model(X_test.to(device)), dim=1)
-            scores = probs[:, 1].cpu().numpy()
+    for epoch in range(50):
+        bugnet.train()
+        optimizer.zero_grad()
+        outputs = bugnet(X_train.to(device))
+        loss = criterion(outputs, y_train.to(device))
+        loss.backward()
+        optimizer.step()
+    bugnet.eval()
+    with torch.no_grad():
+        probs_bugnet = F.softmax(bugnet(X_test.to(device)), dim=1)
+        scores_bugnet = probs_bugnet[:, 1].cpu().numpy()
 
-        test_flags = np.zeros(len(testloader.dataset))
-        test_flags[test_error_index] = 1
-        index = np.argsort(scores)[::-1]
-        sorted_flags = test_flags[index]
-        print("RAUC@100:", rauc(sorted_flags, 100))
-        print("RAUC@200:", rauc(sorted_flags, 200))
-        print("RAUC@500:", rauc(sorted_flags, 500))
-        print("RAUC@1000:", rauc(sorted_flags, 1000))
-        print("RAUC@all:", rauc(sorted_flags, len(testloader.dataset)))
-        print("ATRC:", ATRC(sorted_flags, int(np.sum(test_flags))))
+    # --- Train RandomForest ---
+    rf = RandomForestClassifier(n_estimators=100, max_depth=None, class_weight='balanced')
+    rf.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
+    scores_rf = rf.predict_proba(X_test.cpu().numpy())[:, 1]
 
-    elif model_type == "rf":
-        results = run_rf_grid(val_features, val_labels, test_features, test_error_index)
-        for params, r100, r500, atrc in results:
-            print(f"[RF {params}] RAUC@100: {r100:.3f}, RAUC@500: {r500:.3f}, ATRC: {atrc:.3f}")
+    # --- Ensemble ---
+    scores_ensemble = ensemble_scores(scores_bugnet, scores_rf)
 
+    # --- Evaluate All Models ---
+    model_scores = {
+        "BugNet": scores_bugnet,
+        "RandomForest": scores_rf,
+        "Ensemble": scores_ensemble
+    }
+
+    summary = evaluate_models(model_scores, test_flags)
+
+    print("\n📊 Evaluation Summary (Auto-selected best based on composite score):")
+    for entry in summary:
+        print(f"{entry['name']}: RAUC@100={entry['RAUC@100']:.3f}, RAUC@500={entry['RAUC@500']:.3f}, "
+              f"ATRC={entry['ATRC']:.3f}, Composite Score={entry['Composite Score']:.3f}")
+
+    # --- Plot Bug Discovery Curve (TRC) ---
+    sorted_flags_list = [entry["Sorted Flags"] for entry in summary]
+    labels = [entry["name"] for entry in summary]
+    plot_trc_curve(sorted_flags_list, labels)
+    plt.show()
 
 if __name__ == '__main__':
     main()
