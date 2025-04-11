@@ -103,7 +103,7 @@ def calculate_agreement(labels):
     return np.array(agreement_scores)
 
 
-def extract_features_optimized(pros, labels, infos):
+def extract_features(pros, labels, infos):
     avg_p_diff = calculate_avg_pro_diff(pros)
     avg_info = np.mean(infos, axis=1)
     std_info = np.std(infos, axis=1)
