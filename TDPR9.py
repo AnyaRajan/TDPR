@@ -235,27 +235,84 @@ class BugNetV2(nn.Module):
 
 # --- Main Function ---
 def main():
+    # Initialize model and training data.
     net = models.__dict__[conf.model]().to(device)
     trainloader = get_train_data(conf.dataset)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), weight_decay=1e-4, momentum=0.9, lr=0.1)
+    if conf.dataset in ["cifar10", "imagenet"]:
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(net.parameters(), weight_decay=1e-4, momentum=0.9, lr=0.1)
+    else:
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(net.parameters(), lr=0.001)
+        
+    # Train the model.
     train(net, conf.epochs, optimizer, criterion, trainloader, device)
-
+    # Get validation and test DataLoaders.
     valloader, testloader = get_val_and_test(conf.corruption)
-
-    val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=conf.augs)
-    test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=conf.augs)
-
-    val_features = extract_features_optimized(val_prob_arrays, val_label_arrays, val_uncertainty_arrays)
-    test_features = extract_features_optimized(test_prob_arrays, test_label_arrays, test_uncertainty_arrays)
-
-    _, _, _, val_error_index = test(net, valloader)
-    _, _, _, test_error_index = test(net, testloader)
-
+    
+    # Set up file paths for saving intermediate arrays.
+    aug_file = "augmented_outputs.npz"
+    feat_file = "extracted_features.npz"
+    err_file = "error_indices.npz"
+    
+    # If augmented outputs exist, load them; otherwise compute and save.
+    if os.path.exists(aug_file):
+        data = np.load(aug_file)
+        val_prob_arrays = data['val_prob_arrays']
+        val_label_arrays = data['val_label_arrays']
+        val_uncertainty_arrays = data['val_uncertainty_arrays']
+        test_prob_arrays = data['test_prob_arrays']
+        test_label_arrays = data['test_label_arrays']
+        test_uncertainty_arrays = data['test_uncertainty_arrays']
+        print("Loaded augmented outputs from file.")
+    else:
+        val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=conf.augs)
+        test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=conf.augs)
+        np.savez(aug_file,
+                 val_prob_arrays=val_prob_arrays,
+                 val_label_arrays=val_label_arrays,
+                 val_uncertainty_arrays=val_uncertainty_arrays,
+                 test_prob_arrays=test_prob_arrays,
+                 test_label_arrays=test_label_arrays,
+                 test_uncertainty_arrays=test_uncertainty_arrays)
+        print("Computed and saved augmented outputs.")
+    
+    # If extracted features exist, load them; otherwise compute and save.
+    if os.path.exists(feat_file):
+        feat_data = np.load(feat_file)
+        val_features = feat_data['val_features']
+        test_features = feat_data['test_features']
+        print("Loaded extracted features from file.")
+    else:
+        val_features = extract_features(val_prob_arrays, val_label_arrays, val_uncertainty_arrays)
+        test_features = extract_features(test_prob_arrays, test_label_arrays, test_uncertainty_arrays)
+        np.savez(feat_file, val_features=val_features, test_features=test_features)
+        print("Computed and saved extracted features.")
+    
+    # If error indices exist, load them; otherwise compute and save.
+    if os.path.exists(err_file):
+        err_data = np.load(err_file)
+        val_error_index = err_data['val_error_index']
+        test_error_index = err_data['test_error_index']
+        print("Loaded error indices from file.")
+    else:
+        _, _, _, val_error_index = test(net, valloader)
+        _, _, _, test_error_index = test(net, testloader)
+        np.savez(err_file, val_error_index=val_error_index, test_error_index=test_error_index)
+        print("Computed and saved error indices.")
+    
+    print("Extracted validation features shape:", val_features.shape)
+    print("Extracted test features shape:", test_features.shape)
+    
+    # Create binary labels: 0 for correct predictions, 1 for bug-revealing samples.
     val_labels = np.zeros(len(valloader.dataset), dtype=int)
     val_labels[val_error_index] = 1
 
+
+    # Hyperparameter for hidden layer size
+    hidden_dim = 64  # You can make this a configurable argument
+
+    # Convert data to PyTorch tensors
     X_train = torch.tensor(val_features, dtype=torch.float32)
     y_train = torch.tensor(val_labels, dtype=torch.long)
     X_test = torch.tensor(test_features, dtype=torch.float32)
@@ -276,6 +333,12 @@ def main():
             loss = criterion(outputs, y_train.to(device))
             loss.backward()
             optimizer.step()
+            # Compute accuracy
+            _, predicted = torch.max(outputs, dim=1)
+            correct = (predicted == y_train.to(device)).sum().item()
+            total = y_train.size(0)
+            accuracy = 100.0 * correct / total
+            print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
 
         model.eval()
         with torch.no_grad():

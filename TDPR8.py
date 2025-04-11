@@ -208,7 +208,7 @@ def main():
     trainloader = get_train_data(conf.dataset)
     if conf.dataset in ["cifar10", "imagenet"]:
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(net.parameters(), weight_decay=5e-4, momentum=0.9, lr=0.1)
+        optimizer = optim.SGD(net.parameters(), weight_decay=1e-4, momentum=0.9, lr=0.1)
     else:
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(net.parameters(), lr=0.001)
