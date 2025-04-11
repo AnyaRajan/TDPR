@@ -341,12 +341,21 @@ def main():
         loss = criterion(outputs, y_train.to(device))
         loss.backward()
         optimizer.step()
+        #calculate accuracy
+        _, predicted = torch.max(outputs, 1)
+        correct = (predicted == y_train.to(device)).sum().item()
+        total = y_train.size(0)
+        acc = 100 * correct / total
+        print(f"Epoch [{epoch + 1}/50], Loss: {loss.item():.4f}, Accuracy: {acc:.2f}%")
+        
     bugnet.eval()
     with torch.no_grad():
         probs_bugnet = F.softmax(bugnet(X_test.to(device)), dim=1)
         scores_bugnet = probs_bugnet[:, 1].cpu().numpy()
+        
 
     # --- Train RandomForest ---
+    # Use best hyperparameters from grid search
     rf = RandomForestClassifier(n_estimators=100, max_depth=None, class_weight='balanced')
     rf.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
     scores_rf = rf.predict_proba(X_test.cpu().numpy())[:, 1]
