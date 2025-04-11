@@ -410,8 +410,8 @@ def main():
         loss.backward()
         optimizer.step()
         #calculate accuracy
-        _, predicted = torch.max(outputs, 1)
-        correct = (predicted == y_train.to(device)).sum().item()
+        predicted = (torch.sigmoid(outputs) > 0.5).long()
+        correct = (predicted.cpu() == y_train).sum().item()
         total = y_train.size(0)
         acc = 100 * correct / total
         print(f"Epoch [{epoch + 1}/50], Loss: {loss.item():.4f}, Accuracy: {acc:.2f}%")
