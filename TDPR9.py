@@ -354,7 +354,7 @@ def main():
         print("RAUC@500:", rauc(sorted_flags, 500))
         print("RAUC@1000:", rauc(sorted_flags, 1000))
         print("RAUC@all:", rauc(sorted_flags, len(testloader.dataset)))
-        print("ATRC:", ATRC(sorted_flags, np.sum(test_flags)))
+        print("ATRC:", ATRC(sorted_flags, int(np.sum(test_flags))))
 
     elif model_type == "rf":
         results = run_rf_grid(val_features, val_labels, test_features, test_error_index)
