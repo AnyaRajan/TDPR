@@ -27,6 +27,46 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def calculate_info_entropy_from_probs(probs):
     return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
 
+def calculate_margin(pros):
+    margins = []
+    for sample_probs in pros:
+        last_aug_probs = sample_probs[-1]  # Use final augmentation
+        sorted_probs = np.sort(last_aug_probs)[::-1]
+        margin = sorted_probs[0] - sorted_probs[1]
+        margins.append(margin)
+    return np.array(margins)
+
+def calculate_mutual_information(pros):
+    mi_scores = []
+    for sample_probs in pros:
+        avg_probs = np.mean(sample_probs, axis=0)
+        entropy_avg = -np.sum(avg_probs * np.log(avg_probs + 1e-12))
+        avg_entropy = np.mean([-np.sum(p * np.log(p + 1e-12)) for p in sample_probs])
+        mi = entropy_avg - avg_entropy
+        mi_scores.append(mi)
+    return np.array(mi_scores)
+
+def update_val_labels_with_unstable(val_labels, val_label_arrays, threshold=0.5):
+    """
+    Marks unstable samples (based on std deviation of predicted labels across augmentations)
+    as bug-prone (label = 1).
+    
+    Parameters:
+        val_labels (np.ndarray): Current binary labels for validation samples (0 or 1).
+        val_label_arrays (np.ndarray): Shape (N, num_augs), predicted labels across augmentations.
+        threshold (float): Standard deviation threshold to consider a sample unstable.
+
+    Returns:
+        np.ndarray: Updated labels with unstable samples marked as bug-prone.
+    """
+    std_dev = np.std(val_label_arrays, axis=1)
+    unstable_flags = (std_dev > threshold).astype(int)
+    
+    updated_labels = val_labels.copy()
+    updated_labels[unstable_flags == 1] = 1
+    return updated_labels
+
+
 def forward_with_augmentations(net, sample, num_aug=conf.augs):
     if isinstance(sample, torch.Tensor):
         sample = transforms.ToPILImage()(sample.cpu())
@@ -105,15 +145,32 @@ def calculate_agreement(labels):
 
 
 def extract_features(pros, labels, infos):
-    avg_p_diff = calculate_avg_pro_diff(pros)
-    avg_info = np.mean(infos, axis=1)
-    std_info = np.std(infos, axis=1)
-    std_label = np.std(labels, axis=1)
-    max_diff_num = get_num_of_most_diff_class(labels)
-    kl_divs = calculate_kl_divergence(pros)
-    agreements = calculate_agreement(labels)
-    
-    feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff, kl_divs, agreements))
+    # --- Existing features ---
+    avg_p_diff = calculate_avg_pro_diff(pros)                       # Cosine similarity distance
+    avg_info = np.mean(infos, axis=1)                               # Mean entropy
+    std_info = np.std(infos, axis=1)                                # Entropy variation
+    std_label = np.std(labels, axis=1)                              # Label variance
+    max_diff_num = get_num_of_most_diff_class(labels)              # Max disagreement
+    # --- New features ---
+    kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
+    agreements = calculate_agreement(labels)                        # Mode agreement
+    margins = calculate_margin(pros)                                # Top-2 prediction margin
+    mi_scores = calculate_mutual_information(pros)                 # Mutual information across augs
+
+    # --- Combine features ---
+    feature = np.column_stack((
+        std_label,
+        avg_info,
+        std_info,
+        max_diff_num,
+        avg_p_diff,
+        kl_divs,
+        agreements,
+        margins,
+        mi_scores
+    ))
+
+    # Normalize
     scaler = MinMaxScaler()
     return scaler.fit_transform(feature)
 
@@ -224,18 +281,21 @@ class BugNet(nn.Module):
     def __init__(self, input_dim, hidden_dim=128):
         super(BugNet, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.relu1 = nn.ReLU()
-        self.dropout = nn.Dropout(0.3)
+        self.dropout1 = nn.Dropout(0.4)
+
         self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.bn2 = nn.BatchNorm1d(hidden_dim // 2)
         self.relu2 = nn.ReLU()
-        self.out = nn.Linear(hidden_dim // 2, 2)
+        self.dropout2 = nn.Dropout(0.3)
+
+        self.out = nn.Linear(hidden_dim // 2, 1)  # Binary classification → single logit
 
     def forward(self, x):
-        x = self.relu1(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu2(self.fc2(x))
-        return self.out(x)
-
+        x = self.dropout1(self.relu1(self.bn1(self.fc1(x))))
+        x = self.dropout2(self.relu2(self.bn2(self.fc2(x))))
+        return self.out(x).squeeze(1)  # Output shape: (batch,)
 
 # --- Main Function ---
 def main():
@@ -312,6 +372,8 @@ def main():
     val_labels = np.zeros(len(valloader.dataset), dtype=int)
     val_labels[val_error_index] = 1
 
+    # New: label unstable samples as bug-prone too
+    val_labels = update_val_labels_with_unstable(val_labels, val_label_arrays, threshold=0.5)
 
     # Hyperparameter for hidden layer size
     hidden_dim = 64  # You can make this a configurable argument
