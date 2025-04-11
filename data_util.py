@@ -106,7 +106,7 @@ def evaluate_models(model_scores_dict, ground_truth_flags):
         rauc_500 = rauc(sorted_flags, 500)
         rauc_1000 = rauc(sorted_flags, 1000)
         rauc_all = rauc(sorted_flags, len(sorted_flags))
-        atrc_score = ATRC(sorted_flags, bug_count)
+        atrc_score, _ = ATRC(sorted_flags, bug_count)
         score = 0.5 * rauc_100 + 0.3 * rauc_500 + 0.2 * atrc_score  # Composite weighted score
         summary.append({
             "name": name,
