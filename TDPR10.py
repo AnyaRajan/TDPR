@@ -418,8 +418,12 @@ def main():
         
     bugnet.eval()
     with torch.no_grad():
-        probs_bugnet = F.softmax(bugnet(X_test.to(device)), dim=1)
-        scores_bugnet = probs_bugnet[:, 1].cpu().numpy()
+        # probs_bugnet = F.softmax(bugnet(X_test.to(device)), dim=1)
+        # scores_bugnet = probs_bugnet[:, 1].cpu().numpy()
+        logits = bugnet(X_test.to(device))
+        probs_bugnet = torch.sigmoid(logits).cpu().numpy()
+        scores_bugnet = probs_bugnet  # since sigmoid output is the score
+
         
 
     # --- Train RandomForest ---
