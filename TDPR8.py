@@ -144,7 +144,6 @@ def test(net, testloader):
     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
-import torch
 
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
     net.to(device)
@@ -185,9 +184,9 @@ def compute_class_weights(y_train_tensor, device):
     return torch.tensor(weights, dtype=torch.float32).to(device)
 
 
-class BugNetV2(nn.Module):
+class BugNet(nn.Module):
     def __init__(self, input_dim, hidden_dim=128):
-        super(BugNetV2, self).__init__()
+        super(BugNet, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.relu1 = nn.ReLU()
         self.dropout = nn.Dropout(0.3)
