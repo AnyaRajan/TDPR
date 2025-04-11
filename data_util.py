@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, Subset,ConcatDataset
 from sklearn.model_selection import train_test_split
 import models
 import numpy as np
-import corrupted_text
+# import corrupted_text
 from torch.utils.data import TensorDataset, DataLoader
 import random
 import re
