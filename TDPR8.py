@@ -147,6 +147,8 @@ def test(net, testloader):
 
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
     net.to(device)
+    # Add a learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
     
     for epoch in range(num_epochs):
         net.train()  # Set model to training mode
@@ -173,10 +175,10 @@ def train(net, num_epochs, optimizer, criterion, trainloader, device):
         
         epoch_acc = 100 * correct / total
         avg_loss = running_loss / len(trainloader)
+        scheduler.step()  # Step the scheduler after each epoch
 
         print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
-        
-import torch.nn as nn
+
 
 def compute_class_weights(y_train_tensor, device):
     y_train_np = y_train_tensor.cpu().numpy()

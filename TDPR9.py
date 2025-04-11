@@ -216,9 +216,9 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
     return results
 
 
-class BugNetV2(nn.Module):
+class BugNet(nn.Module):
     def __init__(self, input_dim, hidden_dim=128):
-        super(BugNetV2, self).__init__()
+        super(BugNet, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.relu1 = nn.ReLU()
         self.dropout = nn.Dropout(0.3)
@@ -321,7 +321,7 @@ def main():
     model_type = conf.model_type    
 
     if model_type == "nn":
-        model = BugNetV2(input_dim=val_features.shape[1], hidden_dim=128).to(device)
+        model = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
         class_weights = compute_class_weights(y_train, device)
         criterion = nn.CrossEntropyLoss(weight=class_weights)
         optimizer = optim.Adam(model.parameters(), lr=0.001)
