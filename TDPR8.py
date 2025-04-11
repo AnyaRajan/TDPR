@@ -11,7 +11,10 @@ from sklearn.preprocessing import MinMaxScaler
 from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
 import models
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics.pairwise import cosine_similarity
 from PIL import Image
+from sklearn.utils.class_weight import compute_class_weight
 
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -80,13 +83,33 @@ def get_num_of_most_diff_class(labels):
         max_diff[i] = max(diff_counts.values()) if diff_counts else 0
     return max_diff
 
-def extract_features(pros, labels, infos):
+def calculate_kl_divergence(pros):
+    kl_div = []
+    for p in pros:
+        base = p[-1]
+        kl = [np.sum(p_i * np.log((p_i + 1e-12) / (base + 1e-12))) for p_i in p[:-1]]
+        kl_div.append(np.mean(kl))
+    return np.array(kl_div)
+
+def calculate_agreement(labels):
+    agreement_scores = []
+    for row in labels:
+        mode_label = np.bincount(row[:-1].astype(int)).argmax()
+        agreement = np.sum(row[:-1] == mode_label) / (len(row) - 1)
+        agreement_scores.append(agreement)
+    return np.array(agreement_scores)
+
+
+def extract_features_optimized(pros, labels, infos):
     avg_p_diff = calculate_avg_pro_diff(pros)
     avg_info = np.mean(infos, axis=1)
     std_info = np.std(infos, axis=1)
     std_label = np.std(labels, axis=1)
     max_diff_num = get_num_of_most_diff_class(labels)
-    feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff))
+    kl_divs = calculate_kl_divergence(pros)
+    agreements = calculate_agreement(labels)
+    
+    feature = np.column_stack((std_label, avg_info, std_info, max_diff_num, avg_p_diff, kl_divs, agreements))
     scaler = MinMaxScaler()
     return scaler.fit_transform(feature)
 
@@ -154,18 +177,30 @@ def train(net, num_epochs, optimizer, criterion, trainloader, device):
 
         print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
         
-# --- Simple Feedforward Neural Network for Bug Detection ---
-class BugNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super(BugNet, self).__init__()
+import torch.nn as nn
+
+def compute_class_weights(y_train_tensor, device):
+    y_train_np = y_train_tensor.cpu().numpy()
+    weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train_np), y=y_train_np)
+    return torch.tensor(weights, dtype=torch.float32).to(device)
+
+
+class BugNetV2(nn.Module):
+    def __init__(self, input_dim, hidden_dim=128):
+        super(BugNetV2, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_dim, 2)  # Binary classification (0 or 1)
+        self.relu1 = nn.ReLU()
+        self.dropout = nn.Dropout(0.3)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.relu2 = nn.ReLU()
+        self.out = nn.Linear(hidden_dim // 2, 2)
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        x = self.relu1(self.fc1(x))
+        x = self.dropout(x)
+        x = self.relu2(self.fc2(x))
+        return self.out(x)
+
 
 # --- Main Function ---
 def main():
@@ -253,7 +288,8 @@ def main():
 
     # Define model, loss, optimizer
     model = BugNet(input_dim=val_features.shape[1], hidden_dim=hidden_dim).to(device)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = compute_class_weights(y_train, device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Training loop
