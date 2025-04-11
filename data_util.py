@@ -25,6 +25,7 @@ conf = OmegaConf.load('config.yaml')
 from nltk.corpus import stopwords
 import dataclasses
 from torchvision import transforms
+import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
 # def get_augmentation_pipeline():
@@ -66,6 +67,60 @@ def get_augmentation_pipeline():
 #         transforms.ToTensor(),
 #         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 #     ])
+
+def compute_trc_curve(sorted_flags):
+    trc_values = []
+    bug_count = int(np.sum(sorted_flags))
+    for i in range(1, len(sorted_flags) + 1):
+        selected = sorted_flags[:i]
+        trc = np.sum(selected) / min(i, bug_count) if bug_count > 0 else 0
+        trc_values.append(trc)
+    return trc_values
+
+def plot_trc_curve(sorted_flags_list, labels, title="Bug Discovery Curve (TRC)", figsize=(8, 6)):
+    plt.figure(figsize=figsize)
+    for sorted_flags, label in zip(sorted_flags_list, labels):
+        trc_curve = compute_trc_curve(sorted_flags)
+        plt.plot(trc_curve, label=label)
+    plt.xlabel("Number of Samples Selected")
+    plt.ylabel("TRC (Bug Recall)")
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+    
+def ensemble_scores(scores1, scores2, weight1=0.5, weight2=0.5):
+    scores1 = np.array(scores1)
+    scores2 = np.array(scores2)
+    return weight1 * scores1 + weight2 * scores2
+
+def evaluate_models(model_scores_dict, ground_truth_flags):
+    summary = []
+    bug_count = int(np.sum(ground_truth_flags))
+    for name, scores in model_scores_dict.items():
+        ranking = np.argsort(scores)[::-1]
+        sorted_flags = ground_truth_flags[ranking]
+        rauc_100 = rauc(sorted_flags, 100)
+        rauc_200 = rauc(sorted_flags, 200)
+        rauc_500 = rauc(sorted_flags, 500)
+        rauc_1000 = rauc(sorted_flags, 1000)
+        rauc_all = rauc(sorted_flags, len(sorted_flags))
+        atrc_score = ATRC(sorted_flags, bug_count)
+        score = 0.5 * rauc_100 + 0.3 * rauc_500 + 0.2 * atrc_score  # Composite weighted score
+        summary.append({
+            "name": name,
+            "RAUC@100": rauc_100,
+            "RAUC@200": rauc_200,
+            "RAUC@500": rauc_500,
+            "RAUC@1000": rauc_1000,
+            "RAUC@all": rauc_all,
+            "ATRC": atrc_score,
+            "Composite Score": score,
+            "Sorted Flags": sorted_flags
+        })
+    return summary
+
 
 
 @dataclasses.dataclass
