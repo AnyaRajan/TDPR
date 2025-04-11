@@ -1,4 +1,4 @@
-epochs: 10
+epochs: 100
 save_per_n_epochs: 1 # save checkpoint per n epochs
 model: resnet18 # model architecture
 dataset: cifar10 # dataset name
@@ -15,5 +15,5 @@ degree: 15
 num: 200
 budget: 1000
 corruption: "brightness"
-augs: 100
+augs: 10
 model_type: "rf"
