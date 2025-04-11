@@ -23,7 +23,6 @@ from omegaconf import OmegaConf
 from pathlib import Path
 conf = OmegaConf.load('config.yaml')
 from nltk.corpus import stopwords
-import corrupted_text
 import dataclasses
 from torchvision import transforms
 import torchvision.transforms as transforms
