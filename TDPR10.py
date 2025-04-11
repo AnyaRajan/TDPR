@@ -365,7 +365,7 @@ def main():
 
     print("\n📊 Evaluation Summary (Auto-selected best based on composite score):")
     for entry in summary:
-        print(f"{entry['name']}: RAUC@100={entry['RAUC@100']:.3f}, RAUC@500={entry['RAUC@500']:.3f}, "
+        print(f"{entry['name']}: RAUC@100={entry['RAUC@100']:.3f}, RAUC@200={entry['RAUC@200']:.3f}, RAUC@500={entry['RAUC@500']:.3f}, RAUC@1000={entry['RAUC@1000']:.3f}, RAUC@all={entry['RAUC@all']:.3f}, "
               f"ATRC={entry['ATRC']:.3f}, Composite Score={entry['Composite Score']:.3f}")
 
     # --- Plot Bug Discovery Curve (TRC) ---
