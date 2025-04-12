@@ -150,7 +150,7 @@ def calculate_confidence(pros):
 def extract_features(pros, labels, infos):
     # --- Existing features ---
     avg_p_diff = calculate_avg_pro_diff(pros)                       # Cosine similarity distance
-    # avg_info = np.mean(infos, axis=1)                               # Mean entropy
+    avg_info = np.mean(infos, axis=1)                               # Mean entropy
     std_info = np.std(infos, axis=1)                                # Entropy variation
     std_label = np.std(labels, axis=1)                              # Label variance
     # max_diff_num = get_num_of_most_diff_class(labels)              # Max disagreement
@@ -163,7 +163,7 @@ def extract_features(pros, labels, infos):
     # --- Combine features ---
     feature = np.column_stack((
         std_label,
-        # avg_info,
+        avg_info,
         std_info,
         # max_diff_num,
         avg_p_diff,
