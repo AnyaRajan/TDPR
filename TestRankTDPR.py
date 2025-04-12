@@ -378,43 +378,43 @@ def main():
         for params, r100, r500, atrc in results:
             print(f"[RF {params}] RAUC@100: {r100:.3f}, RAUC@500: {r500:.3f}, ATRC: {atrc:.3f}")
     elif model_type == "gnn":
-    from test_rank.models import GNN
+   
 
-    gnn_model = GNN(input_dim=val_features.shape[1], hidden_dim=64).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(gnn_model.parameters(), lr=0.001)
-
-    train_graph = build_pyg_graph(val_features, val_labels, k=100)
-    test_graph = build_pyg_graph(test_features, labels=None, k=100)
-
-    for epoch in range(50):
-        gnn_model.train()
-        optimizer.zero_grad()
-        output = gnn_model(train_graph.x.to(device), train_graph.edge_index.to(device))
-        loss = criterion(output, train_graph.y.to(device))
-        loss.backward()
-        optimizer.step()
-
-        _, predicted = output.max(1)
-        correct = (predicted == train_graph.y.to(device)).sum().item()
-        acc = correct / len(train_graph.y) * 100
-        print(f"Epoch {epoch+1} | Loss: {loss.item():.4f} | Train Acc: {acc:.2f}%")
-
-    gnn_model.eval()
-    with torch.no_grad():
-        scores = F.softmax(gnn_model(test_graph.x.to(device), test_graph.edge_index.to(device)), dim=1)[:, 1].cpu().numpy()
-
-    test_flags = np.zeros(len(testloader.dataset))
-    test_flags[test_error_index] = 1
-    index = np.argsort(scores)[::-1]
-    sorted_flags = test_flags[index]
-
-    print("RAUC@100:", rauc(sorted_flags, 100))
-    print("RAUC@200:", rauc(sorted_flags, 200))
-    print("RAUC@500:", rauc(sorted_flags, 500))
-    print("RAUC@1000:", rauc(sorted_flags, 1000))
-    print("RAUC@all:", rauc(sorted_flags, len(testloader.dataset)))
-    print("ATRC:", ATRC(sorted_flags, int(np.sum(test_flags))))
+        gnn_model = GNN(input_dim=val_features.shape[1], hidden_dim=64).to(device)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(gnn_model.parameters(), lr=0.001)
+    
+        train_graph = build_pyg_graph(val_features, val_labels, k=100)
+        test_graph = build_pyg_graph(test_features, labels=None, k=100)
+    
+        for epoch in range(50):
+            gnn_model.train()
+            optimizer.zero_grad()
+            output = gnn_model(train_graph.x.to(device), train_graph.edge_index.to(device))
+            loss = criterion(output, train_graph.y.to(device))
+            loss.backward()
+            optimizer.step()
+    
+            _, predicted = output.max(1)
+            correct = (predicted == train_graph.y.to(device)).sum().item()
+            acc = correct / len(train_graph.y) * 100
+            print(f"Epoch {epoch+1} | Loss: {loss.item():.4f} | Train Acc: {acc:.2f}%")
+    
+        gnn_model.eval()
+        with torch.no_grad():
+            scores = F.softmax(gnn_model(test_graph.x.to(device), test_graph.edge_index.to(device)), dim=1)[:, 1].cpu().numpy()
+    
+        test_flags = np.zeros(len(testloader.dataset))
+        test_flags[test_error_index] = 1
+        index = np.argsort(scores)[::-1]
+        sorted_flags = test_flags[index]
+    
+        print("RAUC@100:", rauc(sorted_flags, 100))
+        print("RAUC@200:", rauc(sorted_flags, 200))
+        print("RAUC@500:", rauc(sorted_flags, 500))
+        print("RAUC@1000:", rauc(sorted_flags, 1000))
+        print("RAUC@all:", rauc(sorted_flags, len(testloader.dataset)))
+        print("ATRC:", ATRC(sorted_flags, int(np.sum(test_flags))))
 
 
 
