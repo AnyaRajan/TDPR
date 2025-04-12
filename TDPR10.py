@@ -143,6 +143,9 @@ def calculate_agreement(labels):
         agreement_scores.append(agreement)
     return np.array(agreement_scores)
 
+def calculate_confidence(pros):
+    return np.max(pros[:, -1, :], axis=1)
+
 
 def extract_features(pros, labels, infos):
     # --- Existing features ---
@@ -156,6 +159,7 @@ def extract_features(pros, labels, infos):
     agreements = calculate_agreement(labels)                        # Mode agreement
     margins = calculate_margin(pros)                                # Top-2 prediction margin
     mi_scores = calculate_mutual_information(pros)                 # Mutual information across augs
+    confidence = calculate_confidence(pros)
 
     # --- Combine features ---
     feature = np.column_stack((
@@ -167,7 +171,8 @@ def extract_features(pros, labels, infos):
         kl_divs,
         agreements,
         margins,
-        mi_scores
+        mi_scores,
+        confidence
     ))
 
     # Normalize
