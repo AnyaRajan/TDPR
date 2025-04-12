@@ -11,7 +11,7 @@ import torchvision
 from sklearn.preprocessing import MinMaxScaler
 from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from features import *  # Ensure all feature extraction functions are defined here.
-from models import *
+from BugNet import *
 from omegaconf import OmegaConf
 import models
 from sklearn.preprocessing import MinMaxScaler
