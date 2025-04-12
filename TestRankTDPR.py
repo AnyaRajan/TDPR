@@ -55,7 +55,6 @@ def forward_with_augmentations(net, sample, num_aug=conf.augs):
             label_list.append(np.argmax(probs))
             uncertainty_list.append(calculate_info_entropy_from_probs(probs))
     return np.array(prob_list), np.array(label_list), np.array(uncertainty_list)
-
 def generate_augmented_outputs(net, dataset, num_aug=conf.augs):
     num_samples = len(dataset)
     first_sample, _ = dataset[0]
