@@ -19,9 +19,33 @@ from sklearn.utils.class_weight import compute_class_weight
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import ParameterGrid
+from xgboost import XGBClassifier
+
 
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def compute_trc_curve(sorted_flags):
+    trc_values = []
+    bug_count = int(np.sum(sorted_flags))
+    for i in range(1, len(sorted_flags) + 1):
+        selected = sorted_flags[:i]
+        trc = np.sum(selected) / min(i, bug_count) if bug_count > 0 else 0
+        trc_values.append(trc)
+    return trc_values
+
+def plot_trc_curve(sorted_flags_list, labels, title="Bug Discovery Curve (TRC)", figsize=(8, 6)):
+    plt.figure(figsize=figsize)
+    for sorted_flags, label in zip(sorted_flags_list, labels):
+        trc_curve = compute_trc_curve(sorted_flags)
+        plt.plot(trc_curve, label=label)
+    plt.xlabel("Number of Samples Selected")
+    plt.ylabel("TRC (Bug Recall)")
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 # --- Augmentation and Forward Pass Functions ---
 def calculate_info_entropy_from_probs(probs):
@@ -150,10 +174,10 @@ def calculate_confidence(pros):
 def extract_features(pros, labels, infos):
     # --- Existing features ---
     avg_p_diff = calculate_avg_pro_diff(pros)                       # Cosine similarity distance
-    # avg_info = np.mean(infos, axis=1)                               # Mean entropy
+    avg_info = np.mean(infos, axis=1)                               # Mean entropy
     std_info = np.std(infos, axis=1)                                # Entropy variation
-    # std_label = np.std(labels, axis=1)                              # Label variance
-    # max_diff_num = get_num_of_most_diff_class(labels)              # Max disagreement
+    std_label = np.std(labels, axis=1)                              # Label variance
+    max_diff_num = get_num_of_most_diff_class(labels)              # Max disagreement
     # --- New features ---
     kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
     agreements = calculate_agreement(labels)                        # Mode agreement
@@ -162,10 +186,10 @@ def extract_features(pros, labels, infos):
 
     # --- Combine features ---
     feature = np.column_stack((
-        # std_label,
-        # avg_info,
+        std_label,
+        avg_info,
         std_info,
-        # max_diff_num,
+        max_diff_num,
         avg_p_diff,
         kl_divs,
         agreements,
@@ -207,8 +231,6 @@ def test(net, testloader):
     acc = 100. * correct / total
     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
-
-import torch
 
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
     net.to(device)
@@ -434,14 +456,21 @@ def main():
     rf = RandomForestClassifier(n_estimators=100, max_depth=None, class_weight='balanced')
     rf.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
     scores_rf = rf.predict_proba(X_test.cpu().numpy())[:, 1]
+    
+    # --- Train XGBoost ---
+    xgb = XGBClassifier(n_estimators=100, max_depth=6, scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(), use_label_encoder=False, eval_metric='logloss')
+    xgb.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
+    scores_xgb = xgb.predict_proba(X_test.cpu().numpy())[:, 1]
+
 
     # --- Ensemble ---
-    scores_ensemble = ensemble_scores(scores_bugnet, scores_rf)
+    scores_ensemble = ensemble_scores(scores_bugnet, scores_rf, scores_xgb)
 
     # --- Evaluate All Models ---
     model_scores = {
         "BugNet": scores_bugnet,
         "RandomForest": scores_rf,
+        "XGBoost": scores_xgb,
         "Ensemble": scores_ensemble
     }
 
