@@ -152,25 +152,25 @@ def extract_features(pros, labels, infos):
     avg_p_diff = calculate_avg_pro_diff(pros)                       # Cosine similarity distance
     # avg_info = np.mean(infos, axis=1)                               # Mean entropy
     std_info = np.std(infos, axis=1)                                # Entropy variation
-    # std_label = np.std(labels, axis=1)                              # Label variance
+    std_label = np.std(labels, axis=1)                              # Label variance
     # max_diff_num = get_num_of_most_diff_class(labels)              # Max disagreement
     # --- New features ---
-    kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
+    # kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
     agreements = calculate_agreement(labels)                        # Mode agreement
     margins = calculate_margin(pros)                                # Top-2 prediction margin
-    mi_scores = calculate_mutual_information(pros)      
+    # mi_scores = calculate_mutual_information(pros)      
 
     # --- Combine features ---
     feature = np.column_stack((
-        # std_label,
+        std_label,
         # avg_info,
         std_info,
         # max_diff_num,
         avg_p_diff,
-        kl_divs,
+        # kl_divs,
         agreements,
         margins,
-        mi_scores,
+        # mi_scores,
     ))
 
     # Normalize
