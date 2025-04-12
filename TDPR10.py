@@ -453,7 +453,6 @@ def main():
     sorted_flags_list = [entry["Sorted Flags"] for entry in summary]
     labels = [entry["name"] for entry in summary]
     plot_trc_curve(sorted_flags_list, labels)
-    plt.show()
 
 if __name__ == '__main__':
     main()
