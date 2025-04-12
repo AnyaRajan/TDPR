@@ -154,7 +154,7 @@ def extract_features(pros, labels, infos):
     # --- New features ---
     # kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
     agreements = calculate_agreement(labels)                        # Mode agreement
-    margins = calculate_margin(pros)                                # Top-2 prediction margin
+    # margins = calculate_margin(pros)                                # Top-2 prediction margin
     # mi_scores = calculate_mutual_information(pros)                 # Mutual information across augs
 
     # --- Combine features ---
@@ -166,7 +166,7 @@ def extract_features(pros, labels, infos):
         avg_p_diff,
         # kl_divs,
         agreements,
-        margins,
+        # margins,
         # mi_scores
     ))
 
