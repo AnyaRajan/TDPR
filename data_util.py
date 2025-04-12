@@ -72,6 +72,11 @@ def get_augmentation_pipeline():
 def ensemble_scores(*score_arrays):
     return np.mean(score_arrays, axis=0)
 
+def compute_class_weights(y_train_tensor, device):
+    y_train_np = y_train_tensor.cpu().numpy()
+    weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train_np), y=y_train_np)
+    return torch.tensor(weights, dtype=torch.float32).to(device)
+
 
 def evaluate_models(model_scores_dict, ground_truth_flags):
     summary = []
