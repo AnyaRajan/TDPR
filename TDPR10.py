@@ -335,7 +335,8 @@ def main():
     xgb = XGBClassifier(
         n_estimators=100,
         max_depth=6,
-        scale_pos_weight=((len(y_train_float) - y_train_float.sum()) / y_train_float.sum()).item(),
+        # scale_pos_weight=((len(y_train_float) - y_train_float.sum()) / y_train_float.sum()).item(),
+        scale_pos_weight=pos_weight,
         use_label_encoder=False,
         eval_metric='logloss'
     )
