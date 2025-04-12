@@ -1,4 +1,4 @@
-epochs: 10 # number of epochs
+epochs: 60 # number of epochs
 save_per_n_epochs: 1 # save checkpoint per n epochs
 model: resnet18 # model architecture
 dataset: cifar10 # dataset name

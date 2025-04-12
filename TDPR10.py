@@ -158,8 +158,7 @@ def extract_features(pros, labels, infos):
     kl_divs = calculate_kl_divergence(pros)                         # KL divergence to last
     agreements = calculate_agreement(labels)                        # Mode agreement
     margins = calculate_margin(pros)                                # Top-2 prediction margin
-    mi_scores = calculate_mutual_information(pros)                 # Mutual information across augs
-    confidence = calculate_confidence(pros)
+    mi_scores = calculate_mutual_information(pros)      
 
     # --- Combine features ---
     feature = np.column_stack((
@@ -172,7 +171,6 @@ def extract_features(pros, labels, infos):
         agreements,
         margins,
         mi_scores,
-        confidence
     ))
 
     # Normalize
