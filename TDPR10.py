@@ -458,9 +458,16 @@ def main():
     scores_rf = rf.predict_proba(X_test.cpu().numpy())[:, 1]
     
     # --- Train XGBoost ---
-    xgb = XGBClassifier(n_estimators=100, max_depth=6, scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(), use_label_encoder=False, eval_metric='logloss')
+    xgb = XGBClassifier(
+        n_estimators=100,
+        max_depth=6,
+        scale_pos_weight=((len(y_train) - y_train.sum()) / y_train.sum()).item(),  # 👈 Fix here
+        use_label_encoder=False,
+        eval_metric='logloss'
+    )
     xgb.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
     scores_xgb = xgb.predict_proba(X_test.cpu().numpy())[:, 1]
+
 
 
     # --- Ensemble ---

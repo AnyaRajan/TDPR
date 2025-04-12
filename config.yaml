@@ -4,7 +4,7 @@ model: resnet18 # model architecture
 dataset: cifar10 # dataset name
 start: 10
 optimizer:
-  weight_decay: 5e-4
+  weight_decay: 1e-4
   momentum: 0.9
   lr: 0.1
 seed: 42 # random seed
