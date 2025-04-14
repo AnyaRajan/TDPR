@@ -362,8 +362,14 @@ def main():
 
     elif model_type == "rf":
         results = run_rf_grid(val_features, val_labels, test_features, test_error_index)
-        for params, r100, r500, atrc in results:
-            print(f"[RF {params}] RAUC@100: {r100:.3f}, RAUC@500: {r500:.3f}, ATRC: {atrc:.3f}")
+        for params, r100, r200, r500, r1000, rauc_all, atrc in results:
+            print(f"[RF {params}] RAUC@100: {r100}")
+            print(f"[RF {params}] RAUC@200: {r200}")
+            print(f"[RF {params}] RAUC@500: {r500}")
+            print(f"[RF {params}] RAUC@1000: {r1000}")
+            print(f"[RF {params}] RAUC@all: {rauc_all}")
+            print(f"[RF {params}] ATRC: {atrc}")
+                  
 
 
 if __name__ == '__main__':
