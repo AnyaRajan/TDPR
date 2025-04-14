@@ -72,19 +72,21 @@ def test(net,testloader):
     return pros,labels,infos,error_index
 
 def train(net, epoch, optimizer, criterion, trainloader):
-    snapshot_root=Path("snapshots") / Path(str(conf.model))
+    snapshot_root = Path("snapshots") / Path(str(conf.model))
     if not snapshot_root.exists():
         snapshot_root.mkdir(parents=True)
-    print('\nEpoch: %d' % epoch)
-    net.train()
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        inputs, targets = inputs.to(device), targets.to(device)
-        optimizer.zero_grad()
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        torch.save(net.state_dict(),snapshot_root/Path('epoch_' + str(epoch) + '.pth'))
+    for epoch_ in range(epoch):
+        print('\nEpoch: %d' % epoch_)
+        net.train()
+        for batch_idx, (inputs, targets) in enumerate(trainloader):
+            inputs, targets = inputs.to(device), targets.to(device)
+            optimizer.zero_grad()
+            outputs = net(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+        torch.save(net.state_dict(), snapshot_root / Path('epoch_' + str(epoch_) + '.pth'))
+
 
 def main():
     net=models.__dict__[conf.model]().to(device)
