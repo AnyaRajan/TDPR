@@ -56,7 +56,7 @@ def test(net,testloader):
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
-            pro=F.softmax(outputs, dim=1).numpy()
+            pro = F.softmax(outputs, dim=1).cpu().numpy()
             pros.extend(pro)
             info=calculate_info_entropy(pro)
             infos.extend(info)
