@@ -57,7 +57,18 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #     return feature
 def extract_features(pros, labels, infos):
     pros = np.array(pros)  # shape: (num_epochs, num_samples, num_classes)
-    labels = np.array(labels)
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
+    elif isinstance(labels, list) and isinstance(labels[0], torch.Tensor):
+        labels = torch.stack(labels).detach().cpu().numpy()
+    else:
+        labels = np.array(labels)
+    if isinstance(infos, torch.Tensor):
+        infos = infos.detach().cpu().numpy()
+    elif isinstance(infos, list) and isinstance(infos[0], torch.Tensor):
+        infos = torch.stack(infos).detach().cpu().numpy()
+    else:
+        infos = np.array(infos)
     infos = np.array(infos)
 
     avg_p_diff = calculate_avg_pro_diff(pros)
