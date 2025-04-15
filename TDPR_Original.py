@@ -136,7 +136,7 @@ def main():
         val_labels.extend(val_label)
         val_infos.extend(val_info)
         test_pro,test_label,test_info,test_error_index=test(net,testloader)
-        test_pros.extend(test_pros)
+        test_pros.extend(test_pro)
         test_labels.extend(test_label)
         test_infos.extend(test_info)
     
