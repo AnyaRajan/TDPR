@@ -10,7 +10,7 @@ import torchvision
 from sklearn.preprocessing import MinMaxScaler
 from xgboost import DMatrix
 import xgboost
-from data_util import *
+from data_util_2 import *
 from omegaconf import OmegaConf
 
 import models
