@@ -252,15 +252,20 @@ def recursive_cpu_convert(item):
         return item
 
 def calculate_label_std(labels):
-    # Use recursion to convert any CUDA tensor to a NumPy array.
-    labels_converted = recursive_cpu_convert(labels)
-    print("Shape of labels_converted:", np.array(labels_converted).shape)
-    
-    # Continue as before…
+    if torch.is_tensor(labels):
+        labels = labels.detach().cpu().numpy()
+    else:
+        labels = np.array(labels)
 
-    # Ensure the result is a NumPy array; if it is still a list, convert it.
-    if not isinstance(labels_converted, np.ndarray):
-        labels_converted = np.array(labels_converted)
+    if labels.ndim == 1:
+        # Just compute std over all samples (1D case)
+        std = np.std(labels)
+    else:
+        # 2D case (if you later feed more complex label structures)
+        std = np.std(labels[:, conf.start:], axis=1)
+
+    return std
+
 
     # Debug print to verify the conversion:
     # print("Converted labels type:", type(labels_converted))
