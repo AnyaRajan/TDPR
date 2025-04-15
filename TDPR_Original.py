@@ -18,43 +18,74 @@ import models
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def extract_features(pros,labels,infos):
-    pros = np.array(pros)  # Convert list of arrays to a 3D numpy array
+# def extract_features(pros,labels,infos):
+#     pros = np.array(pros)  # Convert list of arrays to a 3D numpy array
 
 
-    pros=pros.transpose([1,0,2])
-    print("pros shape:", pros.shape)
+#     pros=pros.transpose([1,0,2])
+#     print("pros shape:", pros.shape)
     
-    avg_p_diff=calculate_avg_pro_diff(pros)
-    avg_info=calculate_avg_info(infos)
-    std_info=calculate_std_info(infos)
-    if isinstance(labels, torch.Tensor):
-        labels = labels.detach().cpu().numpy()
-    elif isinstance(labels, list) and isinstance(labels[0], torch.Tensor):
-        labels = torch.stack(labels).detach().cpu().numpy()
-    else:
-        labels = np.array(labels)
+#     avg_p_diff=calculate_avg_pro_diff(pros)
+#     avg_info=calculate_avg_info(infos)
+#     std_info=calculate_std_info(infos)
+#     if isinstance(labels, torch.Tensor):
+#         labels = labels.detach().cpu().numpy()
+#     elif isinstance(labels, list) and isinstance(labels[0], torch.Tensor):
+#         labels = torch.stack(labels).detach().cpu().numpy()
+#     else:
+#         labels = np.array(labels)
 
-    std_label=calculate_label_std(labels)
-    num_epochs, num_samples = pros.shape[:2]
-    labels = np.array(labels).reshape(num_epochs, num_samples)
-    max_diff_num=get_num_of_most_diff_class(labels)
+#     std_label=calculate_label_std(labels)
+#     num_epochs, num_samples = pros.shape[:2]
+#     labels = np.array(labels).reshape(num_epochs, num_samples)
+#     max_diff_num=get_num_of_most_diff_class(labels)
+#     print("std_label shape:", std_label.shape)
+#     print("avg_info shape:", np.shape(avg_info))
+#     print("std_info shape:", np.shape(std_info))
+#     print("max_diff_num shape:", np.shape(max_diff_num))
+#     print("avg_p_diff shape:", np.shape(avg_p_diff))
+
+#     feature=np.column_stack((
+#         std_label,
+#         avg_info,
+#         std_info,
+#         max_diff_num,
+#         avg_p_diff
+#     ))
+#     scaler = MinMaxScaler()
+#     feature = scaler.fit_transform(feature)
+#     return feature
+def extract_features(pros, labels, infos):
+    pros = np.array(pros)  # shape: (num_epochs, num_samples, num_classes)
+    labels = np.array(labels)
+    infos = np.array(infos)
+
+    avg_p_diff = calculate_avg_pro_diff(pros)
+    avg_info = calculate_avg_info(infos)
+    std_info = calculate_std_info(infos)
+    std_label = calculate_label_std(labels)
+    max_diff_num = get_num_of_most_diff_class(labels)
+
+    print("pros shape:", pros.shape)
+    print("labels shape:", labels.shape)
+    print("avg_info shape:", avg_info.shape)
+    print("std_info shape:", std_info.shape)
     print("std_label shape:", std_label.shape)
-    print("avg_info shape:", np.shape(avg_info))
-    print("std_info shape:", np.shape(std_info))
-    print("max_diff_num shape:", np.shape(max_diff_num))
-    print("avg_p_diff shape:", np.shape(avg_p_diff))
+    print("max_diff_num shape:", max_diff_num.shape)
+    print("avg_p_diff shape:", avg_p_diff.shape)
 
-    feature=np.column_stack((
+    feature = np.column_stack((
         std_label,
         avg_info,
         std_info,
         max_diff_num,
         avg_p_diff
     ))
+
     scaler = MinMaxScaler()
     feature = scaler.fit_transform(feature)
     return feature
+
 def calculate_info_entropy(pros):
     entropies = []
     for pro in pros:
@@ -129,16 +160,31 @@ def main():
     test_labels=[]
     test_infos=[]
     for epoch in range(conf.epochs):
-        net=models.__dict__[conf.model]().to(device)
-        net.load_state_dict(torch.load(snapshot_root/Path("epoch_"+str(epoch)+str(".pth"))))
-        val_pro,val_label,val_info,val_error_index=test(net,valloader)
-        val_pros.extend(val_pro)
-        val_labels.extend(val_label)
-        val_infos.extend(val_info)
-        test_pro,test_label,test_info,test_error_index=test(net,testloader)
-        test_pros.extend(test_pro)
-        test_labels.extend(test_label)
-        test_infos.extend(test_info)
+        net = models.__dict__[conf.model]().to(device)
+        net.load_state_dict(torch.load(snapshot_root / Path("epoch_" + str(epoch) + ".pth")))
+        
+        val_pro, val_label, val_info, val_error_index = test(net, valloader)
+        test_pro, test_label, test_info, test_error_index = test(net, testloader)
+
+        val_pros.append(val_pro)      # changed from extend
+        val_labels.append(val_label)  # changed from extend
+        val_infos.append(val_info)    # changed from extend
+
+        test_pros.append(test_pro)     
+        test_labels.append(test_label) 
+        test_infos.append(test_info)
+    
+    # for epoch in range(conf.epochs):
+    #     net=models.__dict__[conf.model]().to(device)
+    #     net.load_state_dict(torch.load(snapshot_root/Path("epoch_"+str(epoch)+str(".pth"))))
+    #     val_pro,val_label,val_info,val_error_index=test(net,valloader)
+    #     val_pros.extend(val_pro)
+    #     val_labels.extend(val_label)
+    #     val_infos.extend(val_info)
+    #     test_pro,test_label,test_info,test_error_index=test(net,testloader)
+    #     test_pros.extend(test_pro)
+    #     test_labels.extend(test_label)
+    #     test_infos.extend(test_info)
     
     val_features=extract_features(val_pros,val_labels,val_infos)
     test_features=extract_features(test_pros,test_labels,test_infos)
