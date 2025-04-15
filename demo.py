@@ -12,7 +12,12 @@ test_infos=np.load("demo/test_infos.npy")
 val_features = extract_features(val_pros, val_labels, val_infos)
 test_features = extract_features(test_pros, test_labels, test_infos)
 val_train_label = np.zeros(len(val_features), dtype=int)
-val_train_label[val_error_index] = 1
+valid_error_index = val_error_index[val_error_index < len(val_train_label)]
+print("len(val_train_label):", len(val_train_label))
+print("max(val_error_index):", np.max(val_error_index))
+assert np.max(val_error_index) < len(val_train_label), "val_error_index contains out-of-bound indices"
+
+val_train_label[valid_error_index] = 1
 xgb_rank_params = {
     'objective': 'rank:pairwise',
     'colsample_bytree': 0.5,  # This is the ratio of the number of columns used
