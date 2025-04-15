@@ -254,7 +254,10 @@ def recursive_cpu_convert(item):
 def calculate_label_std(labels):
     # Use recursion to convert any CUDA tensor to a NumPy array.
     labels_converted = recursive_cpu_convert(labels)
+    print("Shape of labels_converted:", np.array(labels_converted).shape)
     
+    # Continue as before…
+
     # Ensure the result is a NumPy array; if it is still a list, convert it.
     if not isinstance(labels_converted, np.ndarray):
         labels_converted = np.array(labels_converted)
