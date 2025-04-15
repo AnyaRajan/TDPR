@@ -227,7 +227,7 @@ def main():
     net = models.__dict__[conf.model]().to(device)
     trainloader = get_train_data(conf.dataset)
     if conf.dataset in ["cifar10", "imagenet"]:
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights[1])
         optimizer = optim.SGD(net.parameters(), weight_decay=1e-4, momentum=0.9, lr=0.1)
     else:
         criterion = nn.CrossEntropyLoss()
@@ -302,7 +302,7 @@ def main():
 
     # Convert data to PyTorch tensors
     X_train = torch.tensor(val_features, dtype=torch.float32)
-    y_train = torch.tensor(val_labels, dtype=torch.long)
+    y_train = torch.tensor(val_labels, dtype=torch.float32)
     X_test = torch.tensor(test_features, dtype=torch.float32)
 
     # Choose model: "rf" or "nn"
@@ -317,8 +317,8 @@ def main():
         for epoch in range(50):
             model.train()
             optimizer.zero_grad()
-            outputs = model(X_train.to(device))
-            loss = criterion(outputs, y_train.to(device))
+            outputs = model(X_train.to(device))         # Shape: (batch,)
+            loss = criterion(outputs, y_train.to(device))  # Both are float, no softmax!
             loss.backward()
             optimizer.step()
             # Compute accuracy
@@ -330,8 +330,9 @@ def main():
 
         model.eval()
         with torch.no_grad():
-            probs = F.softmax(model(X_test.to(device)), dim=1)
-            scores = probs[:, 1].cpu().numpy()
+            probs = torch.sigmoid(model(X_test.to(device)))  # Sigmoid instead of softmax
+            scores = probs.cpu().numpy()  # Shape: (batch,)
+
 
         test_flags = np.zeros(len(testloader.dataset))
         test_flags[test_error_index] = 1
