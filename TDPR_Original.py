@@ -60,7 +60,7 @@ def test(net,testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
             pro = F.softmax(outputs, dim=1).cpu().numpy()
-            pros.extend(pro)
+            pros.append(pro)
             info=calculate_info_entropy(pro)
             infos.extend(info)
             _, predicted = outputs.max(1)
