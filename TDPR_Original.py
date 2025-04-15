@@ -37,6 +37,12 @@ def extract_features(pros,labels,infos):
     num_epochs, num_samples = pros.shape[:2]
     labels = np.array(labels).reshape(num_epochs, num_samples)
     max_diff_num=get_num_of_most_diff_class(labels)
+    print("std_label shape:", std_label.shape)
+    print("avg_info shape:", np.shape(avg_info))
+    print("std_info shape:", np.shape(std_info))
+    print("max_diff_num shape:", np.shape(max_diff_num))
+    print("avg_p_diff shape:", np.shape(avg_p_diff))
+
     feature=np.column_stack((
         std_label,
         avg_info,
