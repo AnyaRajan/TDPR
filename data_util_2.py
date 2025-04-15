@@ -235,6 +235,7 @@ def get_num_of_most_diff_class(labels):
     return max_different_count
 
 def calculate_label_std(labels):
+    labels = np.array(labels)
     std = np.std(labels[:,conf.start:], axis=1)
     return std
 
