@@ -253,29 +253,16 @@ def recursive_cpu_convert(item):
 
 def calculate_label_std(labels):
     if torch.is_tensor(labels):
-        labels = labels.detach().cpu().numpy()
+        labels = labels.detach().cpu().numpy()  # <- move to CPU before NumPy conversion
     else:
         labels = np.array(labels)
 
     if labels.ndim == 1:
-        # Just compute std over all samples (1D case)
         std = np.std(labels)
     else:
-        # 2D case (if you later feed more complex label structures)
         std = np.std(labels[:, conf.start:], axis=1)
 
     return std
-
-
-    # Debug print to verify the conversion:
-    # print("Converted labels type:", type(labels_converted))
-    # print("Device (if applicable):", getattr(labels, 'device', 'not a tensor'))
-    
-    std = np.std(labels_converted[:, conf.start:], axis=1)
-    return std
-
-
-
 
 def calculate_avg_info(infos):
     infos = np.array(infos) 
