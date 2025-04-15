@@ -236,10 +236,7 @@ def get_num_of_most_diff_class(labels):
 
 def calculate_label_std(labels):
     # If labels is a tensor on GPU, move it to CPU first, then convert to NumPy
-    if isinstance(labels, torch.Tensor):
-        labels = labels.cpu().numpy()
-    else:
-        labels = np.array(labels)
+    labels = labels.cpu().numpy()
     std = np.std(labels[:, conf.start:], axis=1)
     return std
 
