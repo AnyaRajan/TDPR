@@ -34,6 +34,8 @@ def extract_features(pros,labels,infos):
         labels = np.array(labels)
 
     std_label=calculate_label_std(labels)
+    num_epochs, num_samples = pros.shape[:2]
+    labels = np.array(labels).reshape(num_epochs, num_samples)
     max_diff_num=get_num_of_most_diff_class(labels)
     feature=np.column_stack((
         std_label,
