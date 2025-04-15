@@ -11,6 +11,7 @@ import torchvision
 from sklearn.preprocessing import MinMaxScaler
 from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
+from BugNet import *
 import models
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
@@ -218,23 +219,6 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
         results.append((params, rauc_100, rauc_200, rauc_500, rauc_1000, rauc_all, atrc_val))
 
     return results
-
-
-class BugNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128):
-        super(BugNet, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.relu1 = nn.ReLU()
-        self.dropout = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.relu2 = nn.ReLU()
-        self.out = nn.Linear(hidden_dim // 2, 2)
-
-    def forward(self, x):
-        x = self.relu1(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu2(self.fc2(x))
-        return self.out(x)
 
 
 # --- Main Function ---
