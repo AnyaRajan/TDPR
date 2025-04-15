@@ -149,8 +149,6 @@ def test(net, testloader):
     print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
-import torch
-
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
     net.to(device)
     # Add a learning rate scheduler
@@ -322,7 +320,8 @@ def main():
             loss.backward()
             optimizer.step()
             # Compute accuracy
-            _, predicted = torch.max(outputs, dim=1)
+            probs = torch.sigmoid(outputs)
+            predicted = (probs >= 0.5).long()
             correct = (predicted == y_train.to(device)).sum().item()
             total = y_train.size(0)
             accuracy = 100.0 * correct / total
