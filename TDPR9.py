@@ -311,7 +311,7 @@ def main():
     if model_type == "nn":
         model = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
         class_weights = compute_class_weights(y_train, device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        criterion = nn.CrossEntropyLoss(weight=class_weights.float())
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         for epoch in range(50):
