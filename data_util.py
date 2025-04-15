@@ -239,6 +239,7 @@ def calculate_label_std(labels):
     return std
 
 def calculate_avg_info(infos):
+    infos = np.array(infos) 
     infos=infos.transpose()
     avg = np.mean(infos[:,conf.start:], axis=1)
     return avg
