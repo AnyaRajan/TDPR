@@ -194,27 +194,27 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
     test_flags[test_error_index] = 1
 
     results = []
-    grid = ParameterGrid({
-        'n_estimators': [50, 100],
-        'max_depth': [4, 8, None]
-    })
+    # grid = ParameterGrid({
+    #     'n_estimators': [50, 100],
+    #     'max_depth': [4, 8, None]
+    # })
 
-    for params in grid:
-        model = RandomForestClassifier(n_estimators=params['n_estimators'],
-                                       max_depth=params['max_depth'],
-                                       class_weight='balanced')
-        model.fit(X_train, y_train)
-        scores = model.predict_proba(X_test)[:, 1]
-        ranking = np.argsort(scores)[::-1]
-        sorted_flags = test_flags[ranking]
+    # for params in grid:
+    model = RandomForestClassifier(n_estimators=50,
+                                    max_depth=None,
+                                    class_weight='balanced')
+    model.fit(X_train, y_train)
+    scores = model.predict_proba(X_test)[:, 1]
+    ranking = np.argsort(scores)[::-1]
+    sorted_flags = test_flags[ranking]
 
-        rauc_100 = rauc(sorted_flags, 100)
-        rauc_200 = rauc(sorted_flags, 200)
-        rauc_500 = rauc(sorted_flags, 500)
-        rauc_1000 = rauc(sorted_flags, 1000)
-        rauc_all = rauc(sorted_flags, len(test_flags))
-        atrc_val = ATRC(sorted_flags, int(np.sum(test_flags)))
-        results.append((params, rauc_100, rauc_200, rauc_500, rauc_1000, rauc_all, atrc_val))
+    rauc_100 = rauc(sorted_flags, 100)
+    rauc_200 = rauc(sorted_flags, 200)
+    rauc_500 = rauc(sorted_flags, 500)
+    rauc_1000 = rauc(sorted_flags, 1000)
+    rauc_all = rauc(sorted_flags, len(test_flags))
+    atrc_val = ATRC(sorted_flags, int(np.sum(test_flags)))
+    results.append((rauc_100, rauc_200, rauc_500, rauc_1000, rauc_all, atrc_val))
 
     return results
 
@@ -346,13 +346,13 @@ def main():
 
     elif model_type == "rf":
         results = run_rf_grid(val_features, val_labels, test_features, test_error_index)
-        for params, r100, r200, r500, r1000, rauc_all, atrc in results:
-            print(f"[RF {params}] RAUC@100: {r100}")
-            print(f"[RF {params}] RAUC@200: {r200}")
-            print(f"[RF {params}] RAUC@500: {r500}")
-            print(f"[RF {params}] RAUC@1000: {r1000}")
-            print(f"[RF {params}] RAUC@all: {rauc_all}")
-            print(f"[RF {params}] ATRC: {atrc}")
+        for r100, r200, r500, r1000, rauc_all, atrc in results:
+            print(f"RAUC@100: {r100}")
+            print(f"RAUC@200: {r200}")
+            print(f"RAUC@500: {r500}")
+            print(f"RAUC@1000: {r1000}")
+            print(f"RAUC@all: {rauc_all}")
+            print(f"ATRC: {atrc}")
                   
 
 

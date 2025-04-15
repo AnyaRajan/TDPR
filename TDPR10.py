@@ -327,7 +327,7 @@ def main():
 
     # --- Train RandomForest ---
     # Use best hyperparameters from grid search
-    rf = RandomForestClassifier(n_estimators=100, max_depth=None, class_weight='balanced')
+    rf = RandomForestClassifier(n_estimators=50, max_depth=None, class_weight='balanced')
     rf.fit(X_train.cpu().numpy(), y_train.cpu().numpy())
     scores_rf = rf.predict_proba(X_test.cpu().numpy())[:, 1]
     
