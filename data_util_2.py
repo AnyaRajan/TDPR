@@ -255,16 +255,18 @@ def calculate_label_std(labels):
     import torch
     import numpy as np
 
-    if isinstance(labels, torch.Tensor):
-        labels = labels.detach().cpu().numpy()  # ✅ THIS IS THE FIX
+    if isinstance(labels, list):
+        labels = np.array(labels)
+    elif isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
 
-    # Now labels is a NumPy array, safe to use
     if labels.ndim == 1:
         std = np.std(labels)
     else:
         std = np.std(labels[:, conf.start:], axis=1)
 
     return std
+
 
 
 def calculate_avg_info(infos):
