@@ -221,7 +221,11 @@ class CustomDataset(Dataset):
 
 def get_num_of_most_diff_class(labels):
     classes=labels.transpose()
-    target_class=classes[:,-1]
+    if classes.ndim == 1:
+        target_class = classes
+    else:
+        target_class = classes[:, -1]
+
     max_different_count=np.zeros(classes.shape[0],dtype=int)
     for row_idx,row in enumerate(classes):
         different_values,counts=np.unique(row[:-1][row[:-1]!=target_class[row_idx]],return_counts=True)
