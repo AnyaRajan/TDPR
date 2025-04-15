@@ -234,11 +234,18 @@ def get_num_of_most_diff_class(labels):
 
     return max_different_count
 
+import torch
+import numpy as np
+
 def calculate_label_std(labels):
-    # If labels is a tensor on GPU, move it to CPU first, then convert to NumPy
-    labels = labels.cpu().numpy()
+    # If labels is a tensor on GPU, move it to the CPU first
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
+    else:
+        labels = np.array(labels)
     std = np.std(labels[:, conf.start:], axis=1)
     return std
+
 
 
 def calculate_avg_info(infos):
