@@ -221,6 +221,7 @@ class CustomDataset(Dataset):
 
 def get_num_of_most_diff_class(labels):
     classes=labels.transpose()
+    print("original labels shape:", labels.shape)
     if classes.ndim == 1:
         target_class = classes
     else:
@@ -276,6 +277,7 @@ def calculate_label_std(labels):
 def calculate_avg_info(infos):
     infos = np.array(infos) 
     infos=infos.transpose()
+    print("original infos shape:", infos.shape)
     if infos.ndim == 1:
         avg = infos
     else:
@@ -283,6 +285,7 @@ def calculate_avg_info(infos):
     return avg
 def calculate_avg_pro_diff(pros):
     p=pros.transpose((1,0,2))
+    print("original pros shape:", pros.shape)
     target=p[:,-1,:]
     average_distances=np.zeros(p.shape[0],dtype=float)
     for id,row in enumerate(p):
