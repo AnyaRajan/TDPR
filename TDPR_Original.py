@@ -18,43 +18,27 @@ import models
 conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def extract_features(pros,labels,infos):
-    pros = np.array(pros)  # Convert list of arrays to a 3D numpy array
+def extract_features(pros, labels, infos):
+    pros = np.array(pros)  # (N, num_classes)
+    avg_p_diff = calculate_avg_pro_diff(pros)
+    avg_info = np.array(infos)
+    std_info = np.zeros_like(avg_info)  # no variability with single prediction
+    labels = np.array(labels)
+    std_label = np.zeros_like(labels, dtype=np.float32)
+    max_diff_num = np.zeros_like(labels, dtype=np.float32)  # dummy for now
 
-
-    pros=pros.transpose([1,0,2])
-    print("pros shape:", pros.shape)
-    
-    avg_p_diff=calculate_avg_pro_diff(pros)
-    avg_info=calculate_avg_info(infos)
-    std_info=calculate_std_info(infos)
-    if isinstance(labels, torch.Tensor):
-        labels = labels.detach().cpu().numpy()
-    elif isinstance(labels, list) and isinstance(labels[0], torch.Tensor):
-        labels = torch.stack(labels).detach().cpu().numpy()
-    else:
-        labels = np.array(labels)
-
-    std_label=calculate_label_std(labels)
-    num_epochs, num_samples = pros.shape[:2]
-    labels = np.array(labels).reshape(num_epochs, num_samples)
-    max_diff_num=get_num_of_most_diff_class(labels)
-    print("std_label shape:", std_label.shape)
-    print("avg_info shape:", np.shape(avg_info))
-    print("std_info shape:", np.shape(std_info))
-    print("max_diff_num shape:", np.shape(max_diff_num))
-    print("avg_p_diff shape:", np.shape(avg_p_diff))
-
-    feature=np.column_stack((
+    feature = np.column_stack((
         std_label,
         avg_info,
         std_info,
         max_diff_num,
         avg_p_diff
     ))
+
     scaler = MinMaxScaler()
     feature = scaler.fit_transform(feature)
     return feature
+
 def calculate_info_entropy(pros):
     entropies = []
     for pro in pros:
