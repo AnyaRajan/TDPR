@@ -252,17 +252,20 @@ def recursive_cpu_convert(item):
         return item
 
 def calculate_label_std(labels):
-    if torch.is_tensor(labels):
-        labels = labels.detach().cpu().numpy()  # <- move to CPU before NumPy conversion
-    else:
-        labels = np.array(labels)
+    import torch
+    import numpy as np
 
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()  # ✅ THIS IS THE FIX
+
+    # Now labels is a NumPy array, safe to use
     if labels.ndim == 1:
         std = np.std(labels)
     else:
         std = np.std(labels[:, conf.start:], axis=1)
 
     return std
+
 
 def calculate_avg_info(infos):
     infos = np.array(infos) 
