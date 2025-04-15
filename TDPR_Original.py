@@ -19,6 +19,7 @@ conf = OmegaConf.load('config.yaml')
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def extract_features(pros,labels,infos):
+    pros = np.array(pros)  # Convert list of arrays to a 3D numpy array
     pros=pros.transpose([1,0,2])
     avg_p_diff=calculate_avg_pro_diff(pros)
     avg_info=calculate_avg_info(infos)
