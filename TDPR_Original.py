@@ -26,6 +26,7 @@ def extract_features(pros,labels,infos):
     avg_p_diff=calculate_avg_pro_diff(pros)
     avg_info=calculate_avg_info(infos)
     std_info=calculate_std_info(infos)
+    labels = np.array(labels)
     std_label=calculate_label_std(labels)
     max_diff_num=get_num_of_most_diff_class(labels)
     feature=np.column_stack((
@@ -122,7 +123,7 @@ def main():
         test_pros.extend(test_pros)
         test_labels.extend(test_label)
         test_infos.extend(test_info)
-
+    
     val_features=extract_features(val_pros,val_labels,val_infos)
     test_features=extract_features(test_pros,test_labels,test_infos)
     val_labels=np.zeros(len(valloader.dataset),dtype=int)
