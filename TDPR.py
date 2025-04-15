@@ -223,12 +223,12 @@ def main():
     is_bug = is_bug[index]
     
     # Evaluate ranking using RAUC and ATRC metrics.
-    print(rauc(is_bug, 100))
-    print(rauc(is_bug, 200))
-    print(rauc(is_bug, 500))
-    print(rauc(is_bug, 1000))
-    print(rauc(is_bug, test_num))
-    print(ATRC(is_bug, len(test_error_index)))
+    print("RAUC@100:", rauc(is_bug, 100))
+    print("RAUC@200:", rauc(is_bug, 200))
+    print("RAUC@500:", rauc(is_bug, 500))
+    print("RAUC@1000:", rauc(is_bug, 1000))
+    print("RAUC@all:", rauc(sorted_flags, test_num))
+    print("ATRC:", ATRC(sorted_flags, len(test_error_index)))
 
 if __name__=='__main__':
     main()
