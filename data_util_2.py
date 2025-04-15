@@ -256,6 +256,7 @@ def calculate_avg_pro_diff(pros):
     return average_distances
 
 def calculate_std_info(infos):
+    infos = np.array(infos)
     infos=infos.transpose()
     if infos.ndim == 1:
         std = infos
