@@ -237,14 +237,35 @@ def get_num_of_most_diff_class(labels):
 import torch
 import numpy as np
 
-def calculate_label_std(labels):
-    # If labels is a tensor on GPU, move it to the CPU first
-    if isinstance(labels, torch.Tensor):
-        labels = labels.detach().cpu().numpy()
+def recursive_cpu_convert(item):
+    """
+    Recursively convert a tensor (or a nested list/dict structure containing tensors)
+    to a NumPy array.
+    """
+    if torch.is_tensor(item):
+        return item.detach().cpu().numpy()
+    elif isinstance(item, list):
+        return [recursive_cpu_convert(elem) for elem in item]
+    elif isinstance(item, dict):
+        return {key: recursive_cpu_convert(val) for key, val in item.items()}
     else:
-        labels = np.array(labels)
-    std = np.std(labels[:, conf.start:], axis=1)
+        return item
+
+def calculate_label_std(labels):
+    # Use recursion to convert any CUDA tensor to a NumPy array.
+    labels_converted = recursive_cpu_convert(labels)
+    
+    # Ensure the result is a NumPy array; if it is still a list, convert it.
+    if not isinstance(labels_converted, np.ndarray):
+        labels_converted = np.array(labels_converted)
+
+    # Debug print to verify the conversion:
+    # print("Converted labels type:", type(labels_converted))
+    # print("Device (if applicable):", getattr(labels, 'device', 'not a tensor'))
+    
+    std = np.std(labels_converted[:, conf.start:], axis=1)
     return std
+
 
 
 
