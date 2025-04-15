@@ -26,7 +26,13 @@ def extract_features(pros,labels,infos):
     avg_p_diff=calculate_avg_pro_diff(pros)
     avg_info=calculate_avg_info(infos)
     std_info=calculate_std_info(infos)
-    labels = np.array(labels)
+    if isinstance(labels, torch.Tensor):
+        labels = labels.detach().cpu().numpy()
+    elif isinstance(labels, list) and isinstance(labels[0], torch.Tensor):
+        labels = torch.stack(labels).detach().cpu().numpy()
+    else:
+        labels = np.array(labels)
+
     std_label=calculate_label_std(labels)
     max_diff_num=get_num_of_most_diff_class(labels)
     feature=np.column_stack((
