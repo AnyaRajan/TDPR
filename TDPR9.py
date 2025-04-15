@@ -227,7 +227,7 @@ def main():
     net = models.__dict__[conf.model]().to(device)
     trainloader = get_train_data(conf.dataset)
     if conf.dataset in ["cifar10", "imagenet"]:
-        criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights[1])
+        criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), weight_decay=1e-4, momentum=0.9, lr=0.1)
     else:
         criterion = nn.CrossEntropyLoss()
@@ -311,7 +311,7 @@ def main():
     if model_type == "nn":
         model = BugNet(input_dim=val_features.shape[1], hidden_dim=128).to(device)
         class_weights = compute_class_weights(y_train, device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights.float())
+        criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights[1])
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         for epoch in range(50):
