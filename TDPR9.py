@@ -31,7 +31,7 @@ def calculate_info_entropy_from_probs(probs):
 def forward_with_augmentations(net, sample, num_aug=conf.augs):
     if isinstance(sample, torch.Tensor):
         sample = transforms.ToPILImage()(sample.cpu())
-    aug_pipeline = get_augmentation_pipeline()  # Defined in data_util.py
+    aug_pipeline = get_augmentation_pipeline()  
     prob_list, label_list, uncertainty_list = [], [], []
     net.eval()
     with torch.no_grad():
@@ -146,7 +146,7 @@ def test(net, testloader):
                 incorrect_indices = (batch_idx * testloader.batch_size) + torch.nonzero(incorrect_mask).view(-1)
                 error_index.extend(incorrect_indices.tolist())
     acc = 100. * correct / total
-    print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
+    # print(f"\n🧪 Final Test Accuracy: {acc:.2f}%")
     return np.array(pros), np.array(labels), np.array(infos), np.array(error_index)
 
 def train(net, num_epochs, optimizer, criterion, trainloader, device):
@@ -213,7 +213,7 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
         rauc_500 = rauc(sorted_flags, 500)
         rauc_1000 = rauc(sorted_flags, 1000)
         rauc_all = rauc(sorted_flags, len(test_flags))
-        atrc_val, _ = ATRC(sorted_flags, int(np.sum(test_flags)))
+        atrc_val = ATRC(sorted_flags, int(np.sum(test_flags)))
         results.append((params, rauc_100, rauc_200, rauc_500, rauc_1000, rauc_all, atrc_val))
 
     return results
@@ -250,7 +250,7 @@ def main():
         test_prob_arrays = data['test_prob_arrays']
         test_label_arrays = data['test_label_arrays']
         test_uncertainty_arrays = data['test_uncertainty_arrays']
-        print("Loaded augmented outputs from file.")
+        # print("Loaded augmented outputs from file.")
     else:
         val_prob_arrays, val_label_arrays, val_uncertainty_arrays = generate_augmented_outputs(net, valloader.dataset, num_aug=conf.augs)
         test_prob_arrays, test_label_arrays, test_uncertainty_arrays = generate_augmented_outputs(net, testloader.dataset, num_aug=conf.augs)
@@ -261,31 +261,31 @@ def main():
                  test_prob_arrays=test_prob_arrays,
                  test_label_arrays=test_label_arrays,
                  test_uncertainty_arrays=test_uncertainty_arrays)
-        print("Computed and saved augmented outputs.")
+        # print("Computed and saved augmented outputs.")
     
     # If extracted features exist, load them; otherwise compute and save.
     if os.path.exists(feat_file):
         feat_data = np.load(feat_file)
         val_features = feat_data['val_features']
         test_features = feat_data['test_features']
-        print("Loaded extracted features from file.")
+        # print("Loaded extracted features from file.")
     else:
         val_features = extract_features(val_prob_arrays, val_label_arrays, val_uncertainty_arrays)
         test_features = extract_features(test_prob_arrays, test_label_arrays, test_uncertainty_arrays)
         np.savez(feat_file, val_features=val_features, test_features=test_features)
-        print("Computed and saved extracted features.")
+        # print("Computed and saved extracted features.")
     
     # If error indices exist, load them; otherwise compute and save.
     if os.path.exists(err_file):
         err_data = np.load(err_file)
         val_error_index = err_data['val_error_index']
         test_error_index = err_data['test_error_index']
-        print("Loaded error indices from file.")
+        # print("Loaded error indices from file.")
     else:
         _, _, _, val_error_index = test(net, valloader)
         _, _, _, test_error_index = test(net, testloader)
         np.savez(err_file, val_error_index=val_error_index, test_error_index=test_error_index)
-        print("Computed and saved error indices.")
+        # print("Computed and saved error indices.")
     
     print("Extracted validation features shape:", val_features.shape)
     print("Extracted test features shape:", test_features.shape)
@@ -325,7 +325,7 @@ def main():
             correct = (predicted == y_train.to(device)).sum().item()
             total = y_train.size(0)
             accuracy = 100.0 * correct / total
-            print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
+            # print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}, Accuracy = {accuracy:.2f}%")
 
         model.eval()
         with torch.no_grad():

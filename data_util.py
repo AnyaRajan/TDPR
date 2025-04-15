@@ -42,6 +42,7 @@ from PIL import Image
 #         transforms.ToTensor(),
 #         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 #     ])
+
 def get_augmentation_pipeline():
     return transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -275,7 +276,7 @@ def ATRC(sorted,budget=conf.budget):
     for i in range(budget,len(sorted)):
         trc=TRC(sorted,i)
         trcs.append(trc)
-    return total/(budget-1),trcs
+    return total/(budget-1)
 
 def TRC(sorted, budget=conf.budget):
     num_bug=len(np.where(sorted == 1)[0])
