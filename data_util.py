@@ -257,7 +257,7 @@ def calculate_avg_pro_diff(pros):
 
 def calculate_std_info(infos):
     infos=infos.transpose()
-    f infos.ndim == 1:
+    if infos.ndim == 1:
         std = infos
     else:
         std = np.std(infos[:,conf.start:], axis=1)
