@@ -241,9 +241,11 @@ def calculate_label_std(labels):
 def calculate_avg_info(infos):
     infos = np.array(infos) 
     infos=infos.transpose()
-    avg = np.mean(infos[:,conf.start:], axis=1)
+    if infos.ndim == 1:
+        avg = infos
+    else:
+        avg = np.mean(infos[:, conf.start:], axis=1)
     return avg
-
 def calculate_avg_pro_diff(pros):
     p=pros.transpose((1,0,2))
     target=p[:,-1,:]
@@ -255,8 +257,12 @@ def calculate_avg_pro_diff(pros):
 
 def calculate_std_info(infos):
     infos=infos.transpose()
-    std = np.std(infos[:,conf.start:], axis=1)
+    f infos.ndim == 1:
+        std = infos
+    else:
+        std = np.std(infos[:,conf.start:], axis=1)
     return std
+    
 
 def ATRC(sorted,budget=conf.budget):
     total=0
