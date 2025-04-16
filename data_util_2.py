@@ -284,6 +284,7 @@ def calculate_avg_info(infos):
         avg = np.mean(infos[:, conf.start:], axis=1)
     return avg
 def calculate_avg_pro_diff(pros):
+    print(type(pros), pros.shape)
     p=pros.transpose((1,0,2))
     print("original pros shape:", pros.shape)
     target=p[:,-1,:]
