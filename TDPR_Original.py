@@ -61,14 +61,14 @@ def extract_features(pros, labels, infos):
         labels = labels.detach().cpu().numpy()
     elif isinstance(labels, list):
         labels = [x.detach().cpu().numpy() if isinstance(x, torch.Tensor) else x for x in labels]
-        labels = np.array(labels)
+        #labels = np.array(labels)
     else:
         print(labels.shape)
     if isinstance(infos, torch.Tensor):
         infos = infos.detach().cpu().numpy()
     elif isinstance(infos, list):
         infos = [x.detach().cpu().numpy() if isinstance(x, torch.Tensor) else x for x in infos]
-        infos = np.array(infos)
+        #infos = np.array(infos)
     else:
         print(infos.shape)
 
