@@ -16,4 +16,4 @@ num: 200
 budget: 1000
 corruption: "brightness"
 augs: 10
-model_type: "nn"
+model_type: "rf"
