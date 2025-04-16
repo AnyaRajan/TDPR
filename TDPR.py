@@ -151,17 +151,40 @@ def test(net, testloader):
     return pros, labels, infos, error_index
 
 # --- Training Function (Snapshot saving completely removed) ---
-def train(net, num_epochs, optimizer, criterion, trainloader):
-    net.train()
+def train(net, num_epochs, optimizer, criterion, trainloader, device):
+    net.to(device)
+    # Add a learning rate scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+    
     for epoch in range(num_epochs):
-        print(f"\nEpoch: {epoch}")
+        net.train()  # Set model to training mode
+        correct = 0
+        total = 0
+        running_loss = 0.0
+        
+        print(f"\nEpoch: {epoch + 1}")
+        
         for batch_idx, (inputs, targets) in enumerate(trainloader):
             inputs, targets = inputs.to(device), targets.to(device)
+            
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
+            
+            # Compute training accuracy
+            _, predicted = torch.max(outputs, 1)  # Get predicted class
+            correct += (predicted == targets).sum().item()
+            total += targets.size(0)
+            running_loss += loss.item()
+        
+        epoch_acc = 100 * correct / total
+        avg_loss = running_loss / len(trainloader)
+        scheduler.step()  # Step the scheduler after each epoch
+
+        print(f"✅ Epoch {epoch + 1}: Loss: {avg_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        
 
 # --- Main Function ---
 def main():
@@ -227,8 +250,8 @@ def main():
     print("RAUC@200:", rauc(is_bug, 200))
     print("RAUC@500:", rauc(is_bug, 500))
     print("RAUC@1000:", rauc(is_bug, 1000))
-    print("RAUC@all:", rauc(sorted_flags, test_num))
-    print("ATRC:", ATRC(sorted_flags, len(test_error_index)))
+    print("RAUC@all:", rauc(is_bug, test_num))
+    print("ATRC:", ATRC(is_bug, len(test_error_index)))
 
 if __name__=='__main__':
     main()
