@@ -28,33 +28,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def calculate_info_entropy_from_probs(probs):
     return -np.sum(probs * np.log2(probs + 1e-12))  # Avoid log(0)
 
-import matplotlib.pyplot as plt
-
-def visualize_augmentations(dataset, idx=0, num_aug=10):
-    """
-    Visualizes `num_aug` augmented versions of the sample at index `idx` from the dataset.
-    """
-    sample, _ = dataset[idx]
-    if isinstance(sample, torch.Tensor):
-        sample = transforms.ToPILImage()(sample)
-
-    aug_pipeline = get_augmentation_pipeline()
-
-    fig, axes = plt.subplots(1, num_aug, figsize=(num_aug * 2, 2))
-    fig.suptitle(f"Augmented versions of sample {idx}", fontsize=14)
-
-    for i in range(num_aug):
-        aug_sample = aug_pipeline(sample)
-        image_np = aug_sample.permute(1, 2, 0).numpy()
-        image_np = (image_np * np.array([0.2023, 0.1994, 0.2010]) + 
-                    np.array([0.4914, 0.4822, 0.4465]))  # Unnormalize
-        image_np = np.clip(image_np, 0, 1)
-        axes[i].imshow(image_np)
-        axes[i].axis('off')
-
-    plt.tight_layout()
-    plt.show()
-
 
 def forward_with_augmentations(net, sample, num_aug=conf.augs):
     if isinstance(sample, torch.Tensor):
@@ -263,7 +236,6 @@ def main():
     train(net, conf.epochs, optimizer, criterion, trainloader, device)
     # Get validation and test DataLoaders.
     valloader, testloader = get_val_and_test(conf.corruption)
-    visualize_augmentations(valloader.dataset, idx=0, num_aug=10)
     
     # Set up file paths for saving intermediate arrays.
     aug_file = "augmented_outputs.npz"
