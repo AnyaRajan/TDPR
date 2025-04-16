@@ -1,5 +1,5 @@
 import numpy as np
-from TDPR import *
+from TDPR_NEW import *
 # Load the data
 val_error_index=np.load("demo/val_error_index.npy")
 test_error_index=np.load("demo/test_error_index.npy")
