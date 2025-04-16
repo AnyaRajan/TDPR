@@ -9,12 +9,14 @@ val_infos=np.load("demo/val_infos.npy")
 test_pros=np.load("demo/test_pros.npy")
 test_labels=np.load("demo/test_labels.npy")
 test_infos=np.load("demo/test_infos.npy")
+print(val_pros.shape)  # should be (num_epochs, val_size, num_classes)
+
 val_features = extract_features(val_pros, val_labels, val_infos)
+print(val_features.shape[0])
 test_features = extract_features(test_pros, test_labels, test_infos)
 val_train_label = np.zeros(len(val_features), dtype=int)
 valid_error_index = val_error_index[val_error_index < len(val_train_label)]
-print(val_pros.shape)  # should be (num_epochs, val_size, num_classes)
-print(val_features.shape[0])  # should match len(val_error_index)
+  # should match len(val_error_index)
 
 print("len(val_train_label):", len(val_train_label))
 print("max(val_error_index):", np.max(val_error_index))
