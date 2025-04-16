@@ -37,6 +37,7 @@ def forward_with_augmentations(net, sample, num_aug=conf.augs):
     with torch.no_grad():
         for _ in range(num_aug):
             aug_sample = aug_pipeline(sample).unsqueeze(0).to(device)
+            print(aug_sample)
             outputs = net(aug_sample)
             probs = F.softmax(outputs, dim=1).cpu().numpy().squeeze(0)
             prob_list.append(probs)
