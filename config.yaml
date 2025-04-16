@@ -15,5 +15,5 @@ degree: 15
 num: 200
 budget: 1000
 corruption: "brightness"
-augs: 10
+augs: 100
 model_type: "rf"
