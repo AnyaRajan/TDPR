@@ -64,7 +64,7 @@ def extract_features(pros, labels, infos):
         labels = np.array(labels)
     else:
         labels = np.array(labels)
-
+        print(labels.shape)
     if isinstance(infos, torch.Tensor):
         infos = infos.detach().cpu().numpy()
     elif isinstance(infos, list):
@@ -72,6 +72,7 @@ def extract_features(pros, labels, infos):
         infos = np.array(infos)
     else:
         infos = np.array(infos)
+        print(infos.shape)
 
 
     avg_p_diff = calculate_avg_pro_diff(pros)
