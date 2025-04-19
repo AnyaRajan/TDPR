@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision
 from sklearn.preprocessing import MinMaxScaler
-from data_util_2 import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
+from data_util import *  # Ensure get_augmentation_pipeline() and other helpers are defined here.
 from omegaconf import OmegaConf
 from BugNet import *
 import models

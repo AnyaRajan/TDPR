@@ -276,7 +276,7 @@ def ATRC(sorted,budget=conf.budget):
     for i in range(budget,len(sorted)):
         trc=TRC(sorted,i)
         trcs.append(trc)
-    return total/(budget-1)
+    return total/(budget-1), trcs
 
 def TRC(sorted, budget=conf.budget):
     num_bug=len(np.where(sorted == 1)[0])
