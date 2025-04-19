@@ -37,7 +37,6 @@ from sklearn.manifold import TSNE
 #     plt.grid(True)
 #     plt.legend()
 #     plt.savefig(f"trc_curve2_{label}.png", dpi=300, bbox_inches='tight')
-#     plt.show()
 
 
 
@@ -64,7 +63,7 @@ from sklearn.manifold import TSNE
 #     corr = df.drop(columns='label').corr()
 #     sns.heatmap(corr, annot=True, cmap='coolwarm')
 #     plt.title("Feature Correlation Matrix")
-#     plt.show()
+#     plt.savefig("feature_correlation_matrix.png", dpi=300, bbox_inches='tight')
 
 #     # Class-wise mean
 #     print("\n📊 Class-wise Means:")
@@ -343,7 +342,7 @@ def run_rf_grid(X_train, y_train, X_test, test_error_index):
     rauc_1000 = rauc(sorted_flags, 1000)
     rauc_all = rauc(sorted_flags, len(test_flags))
     atrc_val, trc_values = ATRC(sorted_flags, int(np.sum(test_flags)))
-    plot_trc(trc_values, label='TDPR Model', color='green')
+    # plot_trc(trc_values, label='TDPR Model', color='green')
     results.append((rauc_100, rauc_200, rauc_500, rauc_1000, rauc_all, atrc_val))
 
     return results
@@ -368,9 +367,9 @@ def main():
     missing, unexpected = net.load_state_dict(state_dict, strict=False)
 
     if missing or unexpected:
-        print("⚠️  Mismatch while loading weights")
-        print("   • Missing keys:    ", missing)
-        print("   • Unexpected keys: ", unexpected)
+        print("Mismatch while loading weights")
+        print("Missing keys:    ", missing)
+        print("Unexpected keys: ", unexpected)
 
     net.eval() 
 
@@ -464,7 +463,7 @@ def main():
     print(val_features[:5])
     print(val_labels[:5])
 
-    debug_features(val_features, val_labels)
+    # debug_features(val_features, val_labels)
 
     # Hyperparameter for hidden layer size
     hidden_dim = 64  # You can make this a configurable argument
