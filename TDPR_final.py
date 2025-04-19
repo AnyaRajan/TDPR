@@ -360,18 +360,18 @@ def main():
         optimizer = optim.Adam(net.parameters(), lr=0.001)
         
     # Train the model.
-    # train(net, conf.epochs, optimizer, criterion, trainloader, device)
-    final_model_path = "final_model.pth"
-    torch.save(net.state_dict(), final_model_path)
-    state_dict = torch.load(final_model_path, map_location=device)
-    missing, unexpected = net.load_state_dict(state_dict, strict=False)
+    train(net, conf.epochs, optimizer, criterion, trainloader, device)
+    # final_model_path = "final_model.pth"
+    # torch.save(net.state_dict(), final_model_path)
+    # state_dict = torch.load(final_model_path, map_location=device)
+    # missing, unexpected = net.load_state_dict(state_dict, strict=False)
 
-    if missing or unexpected:
-        print("Mismatch while loading weights")
-        print("Missing keys:    ", missing)
-        print("Unexpected keys: ", unexpected)
+    # if missing or unexpected:
+    #     print("Mismatch while loading weights")
+    #     print("Missing keys:    ", missing)
+    #     print("Unexpected keys: ", unexpected)
 
-    net.eval() 
+    # net.eval() 
 
     # Get validation and test DataLoaders.
     valloader, testloader = get_val_and_test(conf.corruption)
