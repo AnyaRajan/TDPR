@@ -187,10 +187,10 @@ def extract_features(pros, labels, infos):
     feature = np.column_stack((
         std_label, 
         avg_info, 
-        # std_info, 
+        std_info, 
         max_diff_num, 
-        # avg_p_diff, 
-        # kl_divs, 
+        avg_p_diff, 
+        kl_divs, 
         agreements, 
         margins, 
         mutual_infos
